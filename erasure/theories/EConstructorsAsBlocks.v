@@ -1012,7 +1012,6 @@ Proof.
     rewrite -> lookup_constructor_pars_args_cstr_arity with (1 := eqc) in e0.
     erewrite chop_all in e0. 2:len.
     eapply eval_iota_block => //.
-    + cbn [fst]. eapply e0.
     + unfold constructor_isprop_pars_decl.
       rewrite lookup_constructor_transform_blocks. cbn [fst].
       rewrite eqc //= H8 //.
@@ -1053,29 +1052,28 @@ Proof.
       * eauto.
       * revert e.
         eapply transform_blocks_tApp => //.
-        -- cbn. rtoProp. split; eauto. split; eauto. eapply wellformed_cunfold_fix; eauto.
-        -- destruct (decompose_app (tApp fn av)) eqn:E; eauto.
-           destruct (construct_viewc t0) eqn:E1; eauto.
-           rewrite GlobalContextMap.lookup_constructor_pars_args_spec;
-           destruct (lookup_constructor_pars_args Σ ind n) as [ [[ ]] | ] eqn:E2; eauto.
-           cbn zeta. destruct chop eqn:E3. intros (? & ? & ?).
-           subst. rewrite -> H7 in *. intros He.
-           eapply eval_mkApps_Construct_block_inv in He as (? & ? & ? & ?); eauto. subst.
-           rewrite -[tApp _ _](mkApps_app _ _ [last l av]) in i1.
-           rewrite H7 - remove_last_last in i1 => //.
-           rewrite isEtaExp_Constructor in i1. rtoProp.
-           rewrite isEtaExp_Constructor in H3. rtoProp.
-           unfold isEtaExp_app in *.
-           rewrite E2 in H3, H5.
-           eapply leb_complete in H3, H5.
-           exfalso.
-           enough (n0 >= #|l|).
-           { destruct l; try congruence. rewrite remove_last_length in H3. cbn in H5, H3, H13. lia. }
-           destruct (chop n0 l) eqn:Ec.
-           erewrite chop_map in E3 => //. 2: eauto.
-           inversion E3. subst. destruct l2; invs H15.
-           rewrite chop_firstn_skipn in Ec. invs Ec.
-           eapply PCUICSR.skipn_nil_length in H15. lia.
+        destruct (decompose_app (tApp fn av)) eqn:E; eauto.
+        destruct (construct_viewc t0) eqn:E1; eauto.
+        rewrite GlobalContextMap.lookup_constructor_pars_args_spec;
+        destruct (lookup_constructor_pars_args Σ ind n) as [ [[ ]] | ] eqn:E2; eauto.
+        cbn zeta. destruct chop eqn:E3. intros (? & ? & ?).
+        subst. rewrite -> H7 in *. intros He.
+        eapply eval_mkApps_Construct_block_inv in He as (? & ? & ? & ?); eauto. subst.
+        rewrite -[tApp _ _](mkApps_app _ _ [last l av]) in i1.
+        rewrite H7 - remove_last_last in i1 => //.
+        rewrite isEtaExp_Constructor in i1. rtoProp.
+        rewrite isEtaExp_Constructor in H3. rtoProp.
+        unfold isEtaExp_app in *.
+        rewrite E2 in H3, H5.
+        eapply leb_complete in H3, H5.
+        exfalso.
+        enough (n0 >= #|l|).
+        { destruct l; try congruence. rewrite remove_last_length in H3. cbn in H5, H3, H13. lia. }
+        destruct (chop n0 l) eqn:Ec.
+        erewrite chop_map in E3 => //.
+        inversion E3. subst. destruct l2; invs H15.
+        rewrite chop_firstn_skipn in Ec. invs Ec.
+        eapply PCUICSR.skipn_nil_length in H15. lia.
   - simp transform_blocks. rewrite -!transform_blocks_equation_1.
     rewrite transform_blocks_mkApps //=.
     simp transform_blocks. rewrite -!transform_blocks_equation_1.

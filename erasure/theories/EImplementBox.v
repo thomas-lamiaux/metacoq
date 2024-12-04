@@ -589,13 +589,10 @@ Proof.
   - intros; repeat match goal with [H : MCProd.and3 _ _ _ |- _] => destruct H end.
     simp implement_box in *.
     eapply eval_fix' => //.
-    + eauto.
-    + cbn. reflexivity.
-    + eauto.
-    + econstructor. econstructor => //.
-      eapply value_final. eapply eval_to_value; eauto.
-      unfold iBox. cbn -[implement_box]. unfold map_def. cbn -[implement_box].
-      econstructor. cbn. eauto.
+    econstructor. econstructor => //.
+    eapply value_final. eapply eval_to_value; eauto.
+    unfold iBox. cbn -[implement_box]. unfold map_def. cbn -[implement_box].
+    econstructor. cbn. eauto.
   - intros; repeat match goal with [H : MCProd.and3 _ _ _ |- _] => destruct H end.
     simp implement_box in *.
     econstructor; eauto.
@@ -613,7 +610,8 @@ Proof.
     eapply eval_zeta => //.
     1: eauto. rewrite H8.
     cbn [csubst Nat.compare].
-    eapply eval_iota_block => //.
+    eapply eval_iota_block.
+    + done.
     + eapply value_final. eapply eval_to_value; eauto.
     + unfold constructor_isprop_pars_decl.
       rewrite lookup_constructor_implement_box. cbn [fst].

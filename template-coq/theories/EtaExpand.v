@@ -1543,9 +1543,9 @@ Proof.
     case: eqb_spec.
     * destruct decl => //.
       intros Hind Hm. inversion Hm.
-      do 3 eexists; cbn. split. split. split => //.
+      do 3 eexists; cbn. split. split. split.
       apply lookup_global_Some_if_In; cbn.
-      subst.  case: eqb_spec=> //.
+      subst. case: eqb_spec=> //.
       cbn. rewrite nth_error_map hnth; reflexivity.
       cbn. rewrite nth_error_map hnth'; reflexivity.
       now cbn. cbn. apply eta_context_assumptions.

@@ -160,7 +160,7 @@ Proof.
     depelim H2. rewrite H3. constructor; auto. }
   assert (Σ ⊢ Γ ,,, pre_case_predicate_context_gen ci mdecl idecl (pparams p) (puinst p) = Γ ,,, predctx).
   { transitivity (Γ ,,, case_predicate_context' ci mdecl idecl p); revgoals.
-    * symmetry. eapply alpha_eq_context_ws_cumul_ctx_pb => //; fvs. now symmetry.
+    * symmetry. eapply alpha_eq_context_ws_cumul_ctx_pb => // ; fvs.
     * eapply pre_case_predicate_context_gen_eq; tea. pcuic.
       now eapply PCUICWfUniverses.typing_wf_sort in pret_ty. }
   unshelve epose proof (typing_spine_case_predicate (ps:=ps) _ H cons _ sppars). 1-2:shelve.
@@ -399,7 +399,7 @@ Proof.
         eapply ws_cumul_pb_Prod_Prod_inv in e as [eqna conv cum]; auto. cbn in *.
         eapply isType_tProd in isty as [].
         have tyt : Σ ;;; Γ |- hd0 : ty.
-        { eapply (type_ws_cumul_pb _ (U:=ty)) in tyhd => //. now symmetry. }
+        { eapply (type_ws_cumul_pb _ (U:=ty)) in tyhd => //. }
         eapply (isType_subst (Δ := [_])) in i0; revgoals.
         { now eapply subslet_ass_tip. }
         eapply typing_spine_strengthen in sp; eauto.

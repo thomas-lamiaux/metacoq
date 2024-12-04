@@ -237,7 +237,7 @@ Proof.
   2:{ eapply IHΣ'' => //. now apply extends_cons_inv in hin. }
   unfold on_snd. cbn. f_equal.
   eapply wellformed_gen_transform_decl_extends => //. cbn.
-  eapply extends_wf_global_decl => //. 2:tea.
+  eapply extends_wf_global_decl. 3: done. done.
   now apply extends_cons_inv in hin.
 Qed.
 

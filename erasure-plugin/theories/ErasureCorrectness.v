@@ -328,7 +328,7 @@ Section PCUICProof.
       cbn [EGlobalEnv.lookup_env fst lookup_env lookup_global].
       { destruct (eqb_spec kn k) => //; cbn.
         intros hl. noconf hl. subst k. eexists; split; cbn; eauto. cbn; eauto.
-        intros hl'. eapply IHdecls => //. tea. }
+        intros hl'. eapply IHdecls => //. }
       { intros hl'. eapply IHdecls in hf; tea. destruct hf.
         exists x.
         cbn.
@@ -1166,7 +1166,7 @@ Proof. split => //.
     apply: firstorder_evalue_elim; intros.
     econstructor.
     move: H. rewrite /EGlobalEnv.lookup_constructor_pars_args.
-    rewrite EInlineProjections.lookup_constructor_optimize //. intros h; exact h. auto. auto.
+    rewrite EInlineProjections.lookup_constructor_optimize //. auto. auto.
   - rewrite /fo_evalue_map. intros [] pr fo. cbn in *. unfold EInlineProjections.optimize_program. cbn. f_equal.
     destruct pr as [[pr _] _]. cbn in *. move: t1 fo.
     apply: firstorder_evalue_elim; intros.

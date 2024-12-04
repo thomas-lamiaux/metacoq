@@ -592,7 +592,6 @@ Section trans_lookups.
     eapply Forall2_nth_error_left in erc as [? [? ?]]; tea.
     destruct decli as [declm decli]. rewrite H0 in decli. noconf decli.
     erewrite (EGlobalEnv.declared_constructor_lookup (id:=(kn,c))) => //.
-    split; tea. split; tea.
   Qed.
 
   Lemma lookup_projection_lookup_constructor {p mdecl idecl cdecl pdecl} :

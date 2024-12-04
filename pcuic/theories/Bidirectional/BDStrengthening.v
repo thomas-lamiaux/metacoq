@@ -778,10 +778,7 @@ Proof using wfΣ.
       1:erewrite declared_minductive_ind_npars ; eauto; apply H.
       assert (on_free_vars_ctx P brctxty.1).
       { rewrite case_branch_type_fst.
-        eapply (@on_free_vars_case_branch_context _ _ _ _ (ci.(ci_ind),i)).
-        all: tea.
-        split.
-        all: eassumption.
+        eapply (@on_free_vars_case_branch_context _ _ _ _ (ci.(ci_ind),i)) => //.
       }
       set (brctx' := rename_context f _).
       split.
@@ -931,7 +928,6 @@ Proof.
     + rewrite /unlift_renaming.
       move: (iΓ'') => /Nat.ltb_spec0 ->.
       rewrite nth_error_app_context_lt //.
-      eassumption.
     + reflexivity.
     + rewrite /= rename_compose.
       apply rename_proper ; auto.
@@ -1019,9 +1015,6 @@ Proof.
     rewrite rename_context_lift_context.
     eapply bidirectional_renaming ; tea.
     - eapply All_local_app_rel, bidirectional_from_pcuic => //.
-      eapply type_Prop_wf.
-      apply typing_wf_local in Hty.
-      eassumption.
     - eapply (urenaming_strengthen _ _ _ []).
     - apply (on_ctx_free_vars_strengthenP _ _ []) => //.
       eapply on_free_vars_ctx_on_ctx_free_vars_xpredT.

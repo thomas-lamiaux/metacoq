@@ -403,7 +403,6 @@ Section Lemmata.
              ++ instantiate (1 := (Γ,,, stack_context π,,, smash_context [] (ind_params x)@[puinst],,, (ind_predicate_context ci x x0)@[puinst])).
                 eapply All2_app => //.
                 { eapply alpha_eq_subst_instance. now symmetry. }
-                reflexivity.
              ++ eapply wf_ind_predicate; tea.
 
         * rewrite /predctx.

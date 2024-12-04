@@ -39,7 +39,7 @@ Proof.
   apply All_local_env_app_inv.
   eapply All_local_env_app in wf => //.
   eapply PCUICSpine.wf_local_alpha; tea.
-  eapply All2_app => //. reflexivity.
+  eapply All2_app => //.
 Qed.
 
 Section OnInductives.

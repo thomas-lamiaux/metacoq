@@ -641,8 +641,7 @@ Qed.
     wf_instance Σ u.
   Proof using Type.
     destruct univs; simpl.
-    - destruct u => // /=.
-      intros _. constructor.
+    - destruct u => //.
     - intros [H%forallb_Forall [H' H'']].
       eapply Forall_impl; eauto.
       simpl; intros. now eapply LS.mem_spec in H0.

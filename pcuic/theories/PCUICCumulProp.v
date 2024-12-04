@@ -63,9 +63,9 @@ Proof using Type.
   - transitivity (mkApps (tInd ind u'u) l'u).
     auto. eapply closed_red_mkApps => //.
   - eapply red_terms_ws_cumul_pb_terms in conv.
-    transitivity l'u => //. now symmetry.
+    transitivity l'u => //.
   - eapply red_terms_ws_cumul_pb_terms in conv'.
-    transitivity l''u => //. now symmetry.
+    transitivity l''u => //.
 Qed.
 
 Lemma ws_cumul_pb_LetIn_l_inv_alt {Σ Γ C na d ty b} {wfΣ : wf Σ.1} :
@@ -127,8 +127,7 @@ Lemma prop_sort_eq {Σ Γ u u'} : Sort.is_prop u -> Sort.is_prop u' ->
 Proof using Type.
   destruct u, u';
   move=> //_ //_.
-  constructor => //. constructor.
-  red. red. constructor.
+  constructor => //.
 Qed.
 
 Lemma sprop_sort_eq {Σ Γ u u'} : Sort.is_sprop u -> Sort.is_sprop u' ->
@@ -137,8 +136,7 @@ Lemma sprop_sort_eq {Σ Γ u u'} : Sort.is_sprop u -> Sort.is_sprop u' ->
 Proof using Type.
   destruct u, u';
   move=> //_ //_.
-  constructor => //. constructor.
-  do 2 red. constructor.
+  constructor => //.
 Qed.
 
 Lemma conv_sort_inv {Σ : global_env_ext} {wfΣ : wf Σ} Γ s s' :
@@ -601,8 +599,6 @@ Proof using Type.
   eapply cumul_prop_alt.
   eexists _, _; split; eauto.
   eapply PCUICEquality.eq_term_upto_univ_substs => //.
-  eapply All2_refl.
-  intros x. eapply PCUICEquality.eq_term_upto_univ_refl; typeclasses eauto.
 Qed.
 
 Lemma substitution_cumul_prop {Σ Γ Δ Γ' s M N} {wfΣ : wf Σ} :
@@ -631,7 +627,6 @@ Proof using Type.
   { eapply is_open_term_subst; tea. }
   { relativize #|Γ ,,, _|. eapply is_open_term_subst; tea. len. }
   eapply PCUICEquality.eq_term_upto_univ_substs => //.
-  reflexivity.
 Qed.
 
 Lemma cumul_prop_args {Σ Γ args args'} {wfΣ : wf_ext Σ} :
@@ -731,7 +726,7 @@ Proof using Type.
     - eapply (is_open_term_subst (Γ' := [])). apply clctx.
       eapply closed_red_terms_open_right in redr. solve_all.
       now rewrite -(All2_length redr) -(untyped_subslet_length subs). apply clM.
-    - eapply PCUICEquality.eq_term_upto_univ_substs => //. reflexivity.
+    - eapply PCUICEquality.eq_term_upto_univ_substs => //.
     - eapply cumul_prop_sym; auto.
       eapply (substitution_red_terms_conv_prop (Γ':=[])). 3:tea. all:tea.
       len. len in clM. now rewrite -(untyped_subslet_length subs') -lens' (untyped_subslet_length subs).
@@ -1156,7 +1151,7 @@ Proof using Type Hcf cf.
     eapply All2_app. 2:(repeat constructor; eauto using eq_term_eq_term_prop_impl).
     eapply cumul_prop_mkApps_Ind_inv in X7 => //.
     eapply All2_app_inv_l in X7 as (?&?&?&?&?).
-    eapply All2_symP => //. typeclasses eauto.
+    eapply All2_symP => //.
     eapply app_inj in e as [eql ->] => //.
     move: (All2_length eqpars).
     move: (All2_length a). lia. fvs. now eapply subject_is_open_term in scrut_ty.

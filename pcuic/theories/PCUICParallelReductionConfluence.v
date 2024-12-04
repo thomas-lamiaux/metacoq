@@ -3135,7 +3135,7 @@ Section Rho.
         rewrite (expand_lets_subst_comm l [b'0] b').
         change (Γ ,, vdef na b0 t) with (Γ ,,, [vdef na b0 t]) in X.
         move/andP: onass => /= [] onb0 ont.
-        eapply substitution_let_pred1 in X; tas. len in X. now exact X.
+        eapply substitution_let_pred1 in X; tas. len in X.
         + rewrite -{1}(subst_empty 0 b0) -{1}(subst_empty 0 b'0); repeat constructor; pcuic.
           now rewrite !subst_empty.
         + len. now eapply All2_fold_context_assumptions in a2.

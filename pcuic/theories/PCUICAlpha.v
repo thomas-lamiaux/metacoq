@@ -358,7 +358,7 @@ Section Alpha.
 
         eapply All2_refl. reflexivity.
 
-        len. reflexivity.
+        len.
 
         all: tc.
   Qed.
@@ -549,7 +549,7 @@ Section Alpha.
              eapply lift_judgment_alpha with (1 := ihA _ eqctx) => //.
       + eapply validity in hB;tea.
         eapply isType_tProd; eauto. split; eauto with pcuic.
-        eapply lift_judgment_alpha with (1 := ihA _ eqctx) => //. reflexivity.
+        eapply lift_judgment_alpha with (1 := ihA _ eqctx) => //.
         eapply validity. eapply ihB; eauto.
         constructor; auto. constructor ; auto. reflexivity.
       + apply eq_term_upto_univ_cumulSpec, eq_term_leq_term.
@@ -653,7 +653,7 @@ Section Alpha.
           * eapply ctx_inst_eq_context; tea. cbn; eauto.
           * eapply ctx_inst_eq_context; tea. cbn; intros; eauto.
             now exact (X6 _ u ltac:(reflexivity) X5).
-          * eapply All2_app => //. apply All2_refl => //. reflexivity. }
+          * eapply All2_app => //. }
         have wfbrs' : wf_branches idecl brs'.
         { move/Forall2_All2: wfbrs => wf.
           apply All2_Forall2. eapply All2_trans'; tea.
@@ -684,8 +684,7 @@ Section Alpha.
           rewrite on_free_vars_mkApps in X1. move/andP: X1 => [] _.
           rewrite forallb_app => /andP[] hargs hc.
           eapply All2_app.
-          2:{ eapply eq_terms_ws_cumul_pb_terms => //.
-              now eapply wf_local_closed_context in wfΔ. }
+          2:{ eapply eq_terms_ws_cumul_pb_terms => //. }
           eapply ctx_inst_closed, All_app in Hctxi as []; eauto.
           eapply ctx_inst_closed, All_app in ctxinst' as []; eauto.
           eapply eq_terms_ws_cumul_pb_terms => //.
@@ -729,7 +728,7 @@ Section Alpha.
         apply eq_term_mkApps; tea.
         rewrite /ptm.
         eapply eq_term_upto_univ_it_mkLambda_or_LetIn; tea; tc.
-        2:eapply upto_names_impl_eq_term => //. 2:now symmetry.
+        2:eapply upto_names_impl_eq_term => //.
         apply eq_context_upto_empty_impl.
         eapply case_predicate_context_equiv. now symmetry.
         eapply All2_app. apply All2_refl; reflexivity.

@@ -596,8 +596,7 @@ Proof.
   intros rRE rRle.
   unfold cmp_global_instance_gen.
   destruct global_variance_gen as [| |v] => //= u.
-  - now apply cmp_universe_instance_refl.
-  - left. now apply cmp_universe_instance_refl.
+  left. now apply cmp_universe_instance_refl.
 Qed.
 
 #[global]
@@ -609,9 +608,7 @@ Proof.
   intros univ_sym univ_sym'.
   unfold cmp_global_instance_gen.
   destruct global_variance_gen as [| |v] => //= u u'.
-  - now symmetry.
-  - intros [H | H]; [left|right].
-    all: now symmetry.
+  by intros [H | H]; [left|right].
 Qed.
 
 #[global]

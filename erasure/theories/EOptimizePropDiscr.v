@@ -700,7 +700,7 @@ Proof.
   - move/andP=> [] clf cla.
     rewrite remove_match_on_box_mkApps.
     eapply eval_construct; tea.
-    rewrite -lookup_constructor_remove_match_on_box //. exact e0.
+    rewrite -lookup_constructor_remove_match_on_box //.
     rewrite remove_match_on_box_mkApps in IHev1. now eapply IHev1.
     now len.
     now eapply IHev2.
@@ -785,7 +785,7 @@ Proof.
   eapply expanded_tConstruct_app.
   destruct H as [[H ?] ?].
   split => //. split => //. red.
-  red in H. rewrite lookup_env_remove_match_on_box // /= H //. 1-2:eauto. auto. solve_all.
+  red in H. rewrite lookup_env_remove_match_on_box // /= H //. all: eauto.
 Qed.
 
 Lemma remove_match_on_box_expanded_decl {Σ : GlobalContextMap.t} t : expanded_decl Σ t -> expanded_decl Σ (remove_match_on_box_decl Σ t).
@@ -1063,7 +1063,7 @@ Section ExpandedFix.
     eapply expanded_tConstruct_app.
     destruct H as [[H ?] ?].
     split => //. split => //. red.
-    red in H. rewrite lookup_env_remove_match_on_box // /= H //. 1-2:eauto. auto. solve_all.
+    red in H. rewrite lookup_env_remove_match_on_box // /= H //. all:eauto.
   Qed.
 
   Lemma remove_match_on_box_expanded_fix_decl {Σ : GlobalContextMap.t} t : expanded_decl Σ t -> expanded_decl Σ (remove_match_on_box_decl Σ t).

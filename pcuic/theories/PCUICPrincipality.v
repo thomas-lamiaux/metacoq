@@ -129,7 +129,7 @@ Section Principality.
       apply ws_cumul_pb_Prod_l_inv in w1 as [na' [A' [B' [redA u1eq ?]]]] => //; auto.
       destruct (p _ t1).
       eapply ws_cumul_pb_Prod => //; auto.
-      transitivity A' => //. now symmetry.
+      transitivity A' => //.
 
     - eapply inversion_LetIn in hA as (bty & Hu12 & Hu3 & Hcum); auto.
       destruct (IHu3 _ _ Hu3) as [u3' p3].
@@ -171,8 +171,7 @@ Section Principality.
       etransitivity; eauto.
       eapply (substitution0_ws_cumul_pb (na:=na') (T:=dom')) => //.
       have convctx : Σ ⊢ Γ ,, vass na' dom' = Γ ,, vass x1 A'.
-      { constructor. apply ws_cumul_ctx_pb_refl. fvs. constructor => //. transitivity A'' => //.
-        now symmetry. now symmetry. }
+      { constructor. apply ws_cumul_ctx_pb_refl. fvs. constructor => //. transitivity A'' => //. }
       transitivity B'' => //. eapply (ws_cumul_pb_ws_cumul_ctx (pb':=Conv)); tea.
       now apply ws_cumul_pb_eq_le.
       eapply type_App'. tea.
@@ -242,7 +241,7 @@ Section Principality.
         eapply ws_cumul_pb_eq_le, wt_cumul_pb_refl. eapply pret_ty.
       * eapply All2_app. 2:constructor; auto.
         assert (ws_cumul_pb_terms Σ Γ (pparams p ++ indices) (pparams p ++ indices')).
-        { transitivity x9'; tea. transitivity x0' => //. now symmetry. }
+        { transitivity x9'; tea. transitivity x0' => //. }
         eapply All2_app_inv in X3 as [] => //.
         eapply wt_cumul_pb_refl; tea.
       * split; eauto.
@@ -364,7 +363,7 @@ Lemma principal_type_ind {cf:checker_flags} {Σ Γ c ind ind' u u' args args'} {
   (∑ ui',
     cmp_ind_universes Σ ind #|args| ui' u *
     cmp_ind_universes Σ ind' #|args'| ui' u') *
-  ws_cumul_pb_terms Σ Γ args args' * 
+  ws_cumul_pb_terms Σ Γ args args' *
   (ind = ind').
 Proof.
   intros h h'.
@@ -375,7 +374,7 @@ Proof.
   eapply invert_red_mkApps_tInd in redl as [args'' [-> eq0]]; auto.
   eapply invert_red_mkApps_tInd in redr as [args''' [eqnf eq1]]; auto.
   solve_discr.
-  repeat split; eauto. 
+  repeat split; eauto.
   assert (#|args| = #|args'|).
   now rewrite -(All2_length eqargs) -(All2_length eqargs') (All2_length a) (All2_length a0).
   transitivity l'. now symmetry.
@@ -675,8 +674,7 @@ Proof.
         epose proof (wf_projection_context _ _ a c1).
         rewrite on_free_vars_ctx_app. apply /andP; split; fvs.
         eapply wf_local_closed_context in X1.
-        eapply on_free_vars_ctx_impl; tea => //.
-        move=> i //. }
+        eapply on_free_vars_ctx_impl; last done. done. }
       eapply (substitution_ws_cumul_pb_subst_conv (Γ0 := ctx) (Γ1 := ctx) (Δ := [])); eauto.
       + eapply PCUICInductives.projection_subslet; eauto.
         eapply validity in X3; auto.

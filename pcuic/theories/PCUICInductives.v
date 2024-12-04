@@ -1073,8 +1073,8 @@ Proof.
         specialize (IH _ Hnth').
         eapply meta_conv. econstructor.
         split; eauto. split; eauto. simpl.
-        rewrite H //. split => //.
-        apply Hnth'.
+        rewrite H //. split.
+        apply Hnth'. done.
         eapply meta_conv. econstructor.
         destruct IH as [(_ & s & isTy & _) _].
         now eapply typing_wf_local in isTy.
@@ -2394,7 +2394,7 @@ Proof.
         len. rewrite closedn_subst_instance_context.
         rewrite closedn_ctx_app in H0. now move/andP: H0. }
       rewrite subst_let_expand_it_mkProd_or_LetIn /=. simpl.
-      eapply arity_spine_it_mkProd_or_LetIn_Sort => //. reflexivity.
+      eapply arity_spine_it_mkProd_or_LetIn_Sort => //.
       rewrite /subst_context_let_expand.
       relativize (subst_context _ _ _).
       rewrite /idxctx app_context_assoc.
@@ -2482,7 +2482,7 @@ Proof.
     eapply subslet_lift; tea.
     apply sp. len.
     rewrite subst_let_expand_it_mkProd_or_LetIn /=.
-    eapply arity_spine_it_mkProd_or_LetIn_Sort => //. reflexivity.
+    eapply arity_spine_it_mkProd_or_LetIn_Sort => //.
     rewrite -subst_instance_to_extended_list_k.
     rewrite /expand_lets_ctx /expand_lets_k_ctx.
     rewrite to_extended_list_k_subst to_extended_list_k_lift_context.

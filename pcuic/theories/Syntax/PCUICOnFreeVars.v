@@ -1237,8 +1237,8 @@ Proof.
   rewrite (on_free_vars_ctx_all_term _ _ Sort.type0).
   rewrite -(subst_it_mkProd_or_LetIn _ _ _ (tSort _)).
   eapply on_free_vars_impl; revgoals.
-  - eapply on_free_vars_subst_gen => //; tea.
-    rewrite -on_free_vars_ctx_all_term //. exact onctx.
+  - eapply on_free_vars_subst_gen => //.
+    rewrite -on_free_vars_ctx_all_term //.
   - intros i. rewrite substP_shiftnP_gen //.
 Qed.
 

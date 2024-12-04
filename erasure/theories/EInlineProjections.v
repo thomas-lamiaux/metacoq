@@ -692,7 +692,7 @@ Proof.
   - move/andP=> [] clf cla.
     rewrite optimize_mkApps.
     eapply eval_construct; tea.
-    rewrite -lookup_constructor_optimize //. exact e0.
+    rewrite -lookup_constructor_optimize //.
     rewrite optimize_mkApps in IHev1. now eapply IHev1.
     now len.
     now eapply IHev2.
@@ -762,7 +762,7 @@ Proof.
   eapply expanded_tConstruct_app.
   destruct H as [[H ?] ?].
   split => //. split => //. red.
-  red in H. rewrite lookup_env_optimize // /= H //. 1-2:eauto. auto. solve_all.
+  red in H. rewrite lookup_env_optimize // /= H //. all:eauto.
 Qed.
 
 Lemma optimize_expanded_decl {Σ : GlobalContextMap.t} t : expanded_decl Σ t -> expanded_decl Σ (optimize_decl Σ t).

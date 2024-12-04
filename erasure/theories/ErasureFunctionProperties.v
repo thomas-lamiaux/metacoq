@@ -289,8 +289,8 @@ Proof.
     eapply Forall2_All2 in Hprojs. eapply All2_nth_error_Some in Hprojs as [? []]; tea.
     2:eapply d.
     econstructor; tea. all:eauto.
-    split => //. 2:split; eauto.
-    split; eauto. split; eauto.
+    split => //.
+    split; eauto.
     rewrite -H4. symmetry; apply d.
 
   - constructor.
@@ -618,13 +618,14 @@ Proof.
         { intros. now eexists. }
         pose proof (prf _ wfΣ). destruct Σ. cbn in *. subst.
         eapply global_erases_with_deps_weaken. eauto.
-        eapply IHdecls => //.
-        3:now eapply KernameSet.singleton_spec.
+        eapply IHdecls.
+        4:now eapply KernameSet.singleton_spec.
         intros d ind%KernameSet.singleton_spec.
         intros. pose proof (abstract_env_irr _ H0 wfpop). subst.
         sq; eexists; eauto.
         eapply KernameSet.subset_spec.
         intros ? hin'. eapply sub. eapply KernameSet.singleton_spec in hin'. now subst.
+        done.
 
       ++ simpl. set (Xpop := abstract_pop_decls X).
       epose proof (abstract_env_exists Xpop) as [[Σp wfpop]].
@@ -1878,7 +1879,7 @@ Proof.
   assert (wfer : wf_glob (efl := all_env_flags) (@erase_global X_type X decls normalization_in prf)).
   { eapply erase_global_wf_glob. }
   rewrite !(filter_deps_filter (efl := all_env_flags)) //.
-  eapply extends_filter_impl => //. 2:exact wfer.
+  eapply extends_filter_impl => //.
   unfold flip.
   move=> x /KernameSet.mem_spec hin.
   apply/KernameSet.mem_spec.

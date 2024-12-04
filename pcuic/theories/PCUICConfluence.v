@@ -313,7 +313,6 @@ Proof.
   - specialize (IHh (Δ ,,, PCUICCases.inst_case_predicate_context p)).
     forward IHh.
     eapply eq_context_upto_cat => //.
-    now apply eq_context_upto_refl.
     destruct IHh as [? [? ?]].
     eexists. split.
     + solve [ econstructor ; eauto ].

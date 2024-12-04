@@ -841,7 +841,7 @@ Proof.
   erewrite (trans_subst _ _); revgoals.
   eapply on_free_vars_extended_subst. rewrite on_free_vars_ctx_k_eq shiftnP0. exact onΓ.
   erewrite on_free_vars_lift. exact onT.
-  erewrite (trans_lift _) => //. 2:exact onT.
+  erewrite (trans_lift _) => //.
   erewrite trans_extended_subst; tea.
   rewrite /expand_lets /expand_lets_k.
   now len.
@@ -4177,7 +4177,6 @@ Proof.
     rewrite (trans_subst (shiftnP 1 p) p) in IHX => /= //.
     now rewrite onb. eapply IHX.
     eapply on_free_vars_subst => /= //. now erewrite onb.
-    exact ont.
   - cbn. move/andP=> []onty ont.
     constructor 4. len; now eapply closedn_trans.
     eapply IHX; tea.
@@ -4198,7 +4197,7 @@ Proof.
   - cbn. move/and3P => [] onb onty ont. constructor.
     rewrite (trans_subst (shiftnP 1 p) p) in IHX => /= //.
     now rewrite onb. eapply IHX.
-    eapply on_free_vars_subst => /= //. now erewrite onb. exact ont.
+    eapply on_free_vars_subst => /= //. now erewrite onb.
   - cbn. move/andP=> [] onty ont.
     constructor. now eapply positive_cstr_arg_trans.
     now eapply IHX.
@@ -5783,7 +5782,7 @@ Proof.
     rewrite trans_subst_instance_ctx //.
     rewrite test_context_k_closed_on_free_vars_ctx in hbctx.
     rewrite on_free_vars_ctx_subst_instance; tea.
-    rewrite /on_free_vars_terms forallb_rev //. exact hpars.
+    rewrite /on_free_vars_terms forallb_rev //.
   - cbn.
     rewrite /inst_case_context.
     erewrite trans_subst_context.
@@ -5793,7 +5792,7 @@ Proof.
     rewrite subst_context_nil //.
     rewrite test_context_k_closed_on_free_vars_ctx in hbctx.
     rewrite on_free_vars_ctx_subst_instance; tea.
-    rewrite /on_free_vars_terms forallb_rev //. exact hpars.
+    rewrite /on_free_vars_terms forallb_rev //.
 Qed.
 
 Lemma trans_local_case_context (Γ : context) p ctx :
@@ -5810,7 +5809,7 @@ Proof.
   rewrite trans_subst_instance_ctx //.
   rewrite test_context_k_closed_on_free_vars_ctx in hbctx.
   rewrite on_free_vars_ctx_subst_instance; tea.
-  rewrite /on_free_vars_terms forallb_rev //. exact hpars.
+  rewrite /on_free_vars_terms forallb_rev //.
 Qed.
 
 Lemma All_local_env_on_free_vars_ctx P P' Γ :

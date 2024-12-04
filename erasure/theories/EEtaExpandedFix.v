@@ -1799,8 +1799,7 @@ Proof.
         intros hargs'; depelim hargs' => //.
         cbn. intros ev. eapply eval_mkApps_inv in ev as [f' [evf'' evargs]].
         eapply eval_app_cong_mkApps.
-        eapply eval_fix' => //. constructor => //. now rewrite H2. exact e.
-        exact evf''. exact hargs'. exact evargs. }
+        eapply eval_fix' => //. constructor => //. all: done. }
       { destruct s as [n [b [hrm [hunf hn]]]].
         clear H0 hev; rewrite hf in H.
         eapply neval_to_stuck_fix_app in H => //.

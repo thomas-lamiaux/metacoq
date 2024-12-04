@@ -257,7 +257,7 @@ Proof.
         1:{ unfold app_context. cbn. rewrite app_nil_r.
             eapply (subslet_cstr_branch_context (u:=u)); tea.
             - eapply declared_constructor_from_gen. eauto.
-            - rewrite lenppars firstn_app_left // in s0. exact s0.
+            - rewrite lenppars firstn_app_left // in s0.
             - eapply declared_constructor_from_gen in d.
               eapply (declared_constructor_assumption_context d).
             - destruct s3 as [Hs [_ []]].
@@ -335,7 +335,7 @@ Proof.
         erewrite <-PCUICCasesContexts.inst_case_branch_context_eq; eauto.
         1:{ eapply (subslet_cstr_branch_context (u:=u)); tea.
             - eapply declared_constructor_from_gen; eauto.
-            - rewrite lenppars firstn_app_left // in s0. exact s0.
+            - rewrite lenppars firstn_app_left // in s0.
             - apply declared_constructor_from_gen in d.
               eapply (declared_constructor_assumption_context d).
             - destruct s3 as [Hs [_ []]].
@@ -860,7 +860,7 @@ Proof.
           eapply Is_proof_ty; eauto.
           eapply unfold_cofix_type; eauto.
           move: e. rewrite -closed_unfold_cofix_cunfold_eq // /unfold_cofix e0.
-          intros e; eapply e. eauto. }
+          eauto. }
         { destruct (declared_inductive_inj decli'' decli); subst.
           econstructor; eauto.
           eapply declared_inductive_from_gen; eauto.  }
@@ -1059,7 +1059,7 @@ Proof.
       etransitivity. eapply PCUICReduction.red_proj_c.
       eapply wcbveval_red; tea.
       constructor. eapply PCUICReduction.red_cofix_proj.
-      move: e. rewrite closed_unfold_cofix_cunfold_eq //. intros e; exact e.
+      move: e. rewrite closed_unfold_cofix_cunfold_eq //.
       now eapply isErasable_red.
 
     * eauto.
@@ -1374,7 +1374,6 @@ Proof.
     eauto.
     depelim etaΣ.
     solve_all. rewrite -b2. len. eapply H8 => //.
-    exact a0.
   - intros Γ0 v etaΣ.
     move=> /erases_mkApps_inv; intros [(?&?&?&?&_&?&?&?)|(?&?&?&?&?)]; subst.
     * eapply erases_deps_mkApps_inv in etaΣ as [].

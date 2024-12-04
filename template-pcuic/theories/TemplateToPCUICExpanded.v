@@ -355,7 +355,7 @@ Proof.
           move: expargs. len.
           move: b.(Typing.on_cargs) => onargs.
           eapply @wf_context_sorts in onargs; tea.
-          cbn. split => /= //. exact w. }
+          cbn. split => /= //. }
 Qed.
 
 Import TemplateProgram.

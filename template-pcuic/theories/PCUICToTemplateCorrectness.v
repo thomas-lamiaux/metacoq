@@ -1034,7 +1034,7 @@ Proof.
   - cbn. destruct b as [mdecl [idecl []]].
     destruct X as [? []]. red in X0. econstructor; cbn; eauto; tea.
     eapply trans_declared_inductive in d; tea. now cbn. cbn.
-    eapply trans_ind_predicate_context_eq => //. now symmetry.
+    eapply trans_ind_predicate_context_eq => //.
     rewrite length_map. cbn. rewrite context_assumptions_map //.
     destruct w. now rewrite -(declared_minductive_ind_npars (proj1 d)).
     cbn. solve_all. eapply All2_map, All2_map_right. solve_all.
@@ -1071,10 +1071,10 @@ Proof.
   - constructor. solve_all.
   - constructor. solve_all.
   - eapply Typing.fix_red_body. solve_all.
-    eapply b0. eapply All2_app => //. reflexivity.
+    eapply b0. eapply All2_app => //.
   - constructor; solve_all.
   - eapply Typing.cofix_red_body; solve_all.
-    eapply b0, All2_app => //. reflexivity.
+    eapply b0, All2_app => //.
   - eapply Typing.array_red_val. solve_all.
 Qed.
 
@@ -1284,7 +1284,7 @@ Proof.
       erewrite expand_lets_eq => //.
       rewrite trans_inst_case_branch_context => //.
       eapply Forall2_All2 in wf_brs. eapply All2_nth_error in wf_brs; tea.
-      eapply declc. reflexivity.
+      eapply declc.
 
   - simpl. rewrite !trans_mkApps /=.
     unfold is_constructor in H0.

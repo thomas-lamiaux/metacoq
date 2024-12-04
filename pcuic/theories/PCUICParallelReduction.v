@@ -1879,8 +1879,8 @@ Section ParallelSubstitution.
       econstructor. eapply on_contexts_app => //.
       rewrite nth_error_app_lt. len. len in l.
       rewrite /inst_context nth_error_fold_context_k option_map_two /=.
-      destruct (nth_error Δ1 x) => //. noconf eqb.
-      cbn. rewrite H /= //.
+      destruct (nth_error Δ1 x). noconf eqb.
+      cbn. rewrite H /= //. done.
       rewrite lift0_inst.
       rewrite inst_assoc. apply inst_ext.
       rewrite -(shiftn_Upn (S x)) -Upn_Upn -len0.
@@ -1912,7 +1912,7 @@ Section ParallelSubstitution.
         unfold subst_compose at 1. rewrite - !(lift0_inst _).
         eapply simpl_pred; revgoals. 3:reflexivity.
         relativize #|Δ0|.
-        eapply weakening_pred1_pred1; tea. now len. len. exact p'. now len.
+        eapply weakening_pred1_pred1; tea. now len. len. now len.
         rewrite lift0_inst inst_assoc. apply inst_ext.
         rewrite subst_compose_assoc; len. rewrite -len0.
         rewrite -{2}(shiftn_Upn #|Δ0|) -subst_compose_assoc shiftk_compose.

@@ -2364,7 +2364,7 @@ Proof.
       rewrite PCUICCases.ind_predicate_context_length; len.
       eapply (trans_ind_predicate_context Σ) in X1.
       eapply (eq_annots_ind_predicate_context ci).
-      eapply All2_Forall2 => //. exact X1.
+      eapply All2_Forall2 => //.
     + clear X7.
       rewrite trans_local_app in X4.
       rewrite /predctx in X4.

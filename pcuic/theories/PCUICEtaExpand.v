@@ -1132,7 +1132,7 @@ Proof.
   destruct nth_error eqn:e => //.
   intros [= <- <-] hf.
   pose proof (nth_error_all e hf) as [hl hf'].
-  eapply (expanded_fix_subst _ _ _ _ []) => //; tea.
+  eapply (expanded_fix_subst _ _ _ _ []) => //.
   rewrite rev_map_spec.
   eapply Forall2_from_nth_error. len.
   intros n rarg f. len. intros hn hrarg hnthf args Γ'' k' hargs hrarg' <-.
@@ -1141,11 +1141,13 @@ Proof.
   rewrite nth_error_rev; len. rewrite List.rev_involutive nth_error_map.
   intros hrarg.
   destruct (nth_error mfix (_ - _)) eqn:e'. cbn in hrarg. noconf hrarg.
-  eapply expanded_tFix => //. solve_all.
-  eapply expanded_lift; len. rewrite !rev_map_spec in H1 *.
-  rewrite map_map => //. destruct args => //. cbn in hrarg'. lia.
-  rewrite nth_error_map /= e' /= //. cbn. lia.
-  eapply nth_error_None in e'. lia.
+  eapply expanded_tFix. 2: done.
+  - solve_all. eapply expanded_lift; len. rewrite !rev_map_spec in H1 *.
+    rewrite map_map => //.
+  - destruct args => //. cbn in hrarg'. lia.
+  - rewrite nth_error_map /= e' /= //.
+  - cbn. lia.
+  - eapply nth_error_None in e'. lia.
 Qed.
 
 Lemma expanded_unfold_cofix Σ Γ' mfix idx narg fn :
@@ -1194,7 +1196,7 @@ Proof.
     constructor. cbn.
     eapply expanded_weakening_env; tea.
     eapply extends_strictly_on_decls_extends.
-    split => //=. eapply incl_cs_refl. 2:eapply Retroknowledge.extends_refl.
+    split => //=.
     set (cb := ConstantDecl _). now exists [(c, cb)].
     constructor.
   - forward IHexpanded_global_declarations.
@@ -1205,8 +1207,7 @@ Proof.
     depelim H'. constructor.
     eapply expanded_weakening_env; tea.
     eapply extends_strictly_on_decls_extends.
-    split => //=. eapply incl_cs_refl. 2:eapply Retroknowledge.extends_refl.
-    now exists [decl0].
+    split => //=. now exists [decl0].
 Qed.
 
 Lemma All_fold_nth_error P (ctx : context) n b :

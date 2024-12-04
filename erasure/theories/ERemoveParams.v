@@ -1267,7 +1267,7 @@ Proof.
   unfold strip_constant_decl.
   destruct (EAst.cst_body c) eqn:hc => /= //.
   intros hwf. f_equal. f_equal. f_equal.
-  eapply strip_extends => //. exact hwf.
+  eapply strip_extends => //.
   intros _ => //.
 Qed.
 
@@ -1383,9 +1383,11 @@ Proof.
   all:try solve[constructor; eauto; solve_all].
   eapply expanded_tConstruct_app.
   destruct H as [[H ?] ?].
-  split => //. split => //. red.
-  red in H. rewrite lookup_env_strip // /= H //. 1-2:eauto.
-  cbn. rewrite /EAst.cstr_arity in H0. lia. solve_all.
+  split => //. split.
+  - red. red in H. rewrite lookup_env_strip /= H. done.
+  - done.
+  - cbn. rewrite /EAst.cstr_arity in H0. lia.
+  - solve_all.
 Qed.
 
 Lemma strip_expanded_decl {Σ : GlobalContextMap.t} t : expanded_decl Σ t -> expanded_decl (strip_env Σ) (strip_decl Σ t).

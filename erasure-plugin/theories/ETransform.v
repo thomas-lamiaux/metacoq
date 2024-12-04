@@ -755,7 +755,7 @@ Qed.
 Next Obligation.
   red. move=> ? wcon [Σ t] /= v [[wfe wft] etap] [ev].
   unshelve eapply ERemoveParams.strip_eval in ev; eauto.
-  eexists; split => /= //. now sq. cbn in *.
+  eexists; split => /= //. cbn in *.
   now move/andP: etap.
   now eapply wellformed_closed_env.
   now eapply wellformed_closed.
@@ -804,7 +804,7 @@ Next Obligation.
   rewrite -ERemoveParams.Fast.strip_fast -ERemoveParams.Fast.strip_env_fast.
   unshelve eapply ERemoveParams.strip_eval in ev; eauto.
   eexists; split => /= //.
-  now sq. cbn in *.
+  cbn in *.
   now move/andP: etap.
   now eapply wellformed_closed_env.
   now eapply wellformed_closed.
@@ -851,7 +851,7 @@ Qed.
 Next Obligation.
   red. move=> fl wcon efl hastrel hastbox [Σ t] /= v [wfe wft] [ev].
   eapply EOptimizePropDiscr.remove_match_on_box_correct in ev; eauto.
-  eexists; split => //. red. sq; auto. cbn. apply wfe.
+  eexists; split => //. sq; auto. cbn. apply wfe.
   eapply wellformed_closed_env, wfe.
   eapply wellformed_closed, wfe.
   Unshelve. eauto.
@@ -895,7 +895,7 @@ Qed.
 Next Obligation.
   red. move=> fl wcon hastrel hastbox [Σ t] /= v [wfe wft] [ev].
   eapply EInlineProjections.optimize_correct in ev; eauto.
-  eexists; split => //. red. sq; auto. cbn. apply wfe.
+  eexists; split => //. sq; auto. cbn. apply wfe.
   cbn. eapply wfe. Unshelve. auto.
 Qed.
 

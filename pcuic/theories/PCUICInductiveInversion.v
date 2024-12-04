@@ -857,7 +857,7 @@ Proof.
   decl_ws_cumul_pb Σ
     (Γ ,,, (vass (dname x) (lift0 #|Γ'| (dtype x)) :: Γ') ,,, Δ)))).
   eapply (IHa (vass _ _ :: Γ') (vass _ _ :: Γ'')).
-  cbn; constructor => //. constructor; eauto.
+  cbn; constructor => //.
   depelim X. eauto.
   intros. red.
   now rewrite ![_ ,,, _]app_context_assoc.
@@ -2059,11 +2059,11 @@ Proof.
   assert (subst_instance (u' ++ u) (lift_instance #|u'| i') = u) as subsu.
   { rewrite closedu_subst_instance_lift //.
     now rewrite H. rewrite eqi'.
-    erewrite subst_instance_id_mdecl => //. eauto. }
+    erewrite subst_instance_id_mdecl => //. }
   assert (subst_instance (u' ++ u) i' = u') as subsu'.
   { rewrite closedu_subst_instance_app //.
     rewrite H0 //. rewrite eqi' //.
-    erewrite subst_instance_id_mdecl => //. eauto. }
+    erewrite subst_instance_id_mdecl => //. }
   eapply (subst_instance_ws_cumul_pb (Σ, v) _ (u' ++ u)) in cum; auto.
   rewrite !subst_instance_two in cum.
   rewrite subst_instance_two_context in cum.
@@ -4514,7 +4514,7 @@ Proof.
   + have?: Σ ;;; Γ |- it_mkLambda_or_LetIn Δ t : it_mkProd_or_LetIn Δ (tSort ps)
     by apply: PCUICGeneration.type_it_mkLambda_or_LetIn; eassumption.
     apply has_sort_isType with (s := ps); apply: PCUICSpine.type_mkApps; first eassumption.
-    apply: typing_spine_it_mkProd_or_LetIn_close=> //=; first eassumption.
+    apply: typing_spine_it_mkProd_or_LetIn_close => //.
     apply: isType_it_mkProd_or_LetIn.
     exact: validity tWty.
   + apply:isType_subst; last (apply has_sort_isType with (s := ps); eassumption).

@@ -1924,7 +1924,7 @@ Section SortCompare.
     Proof using Type. intros []; cbnr. Qed.
 
     Global Instance eq_sort_sym `{Symmetric univ eq_universe} : Symmetric eq_sort.
-    Proof using Type. intros [] [] => //=. apply H. Qed.
+    Proof using Type. intros [] [] => //=. Qed.
 
     Global Instance leq_sort_n_trans n `{Transitive univ (leq_universe_n n)} : Transitive (leq_sort_n n).
     Proof using Type.

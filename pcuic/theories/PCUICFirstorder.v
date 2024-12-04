@@ -215,7 +215,7 @@ Proof using Type.
          rewrite /subst1 PCUICLiftSubst.subst_it_mkProd_or_LetIn subst_mkApps Nat.add_0_r in i0. now rewrite Nat.add_0_r. pcuic.
          etransitivity; tea. eapply into_ws_cumul_pb. 2,4:fvs.
          econstructor 3. 2:{ econstructor. }
-         rewrite /subst1 PCUICLiftSubst.subst_it_mkProd_or_LetIn subst_mkApps //. constructor 1. reflexivity.
+         rewrite /subst1 PCUICLiftSubst.subst_it_mkProd_or_LetIn subst_mkApps //.
          eapply isType_tLetIn_red in i0. 2:pcuic.
          rewrite /subst1 PCUICLiftSubst.subst_it_mkProd_or_LetIn subst_mkApps in i0.
          now eapply isType_open.
@@ -357,10 +357,9 @@ Lemma fresh_global_app decls decls' kn :
   fresh_global kn decls /\ fresh_global kn decls'.
 Proof using Type.
   induction decls => /= //.
-  - intros f; split => //.
-  - intros f; depelim f.
-    specialize (IHdecls f) as [].
-    split; eauto. constructor => //.
+  intros f; depelim f.
+  specialize (IHdecls f) as [].
+  split; eauto. constructor => //.
 Qed.
 
 Lemma plookup_env_Some_not_fresh g kn b :

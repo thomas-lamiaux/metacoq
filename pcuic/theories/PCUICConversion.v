@@ -1393,7 +1393,7 @@ Section Inversions.
     + eapply red_terms_ws_cumul_pb_terms in ha.
       eapply red_terms_ws_cumul_pb_terms in ha'.
       eapply eq_terms_ws_cumul_pb_terms in a; tea; fvs.
-      transitivity l0 => //. transitivity l1 => //. now symmetry.
+      transitivity l0 => //. transitivity l1 => //.
   Qed.
 
   Lemma ws_cumul_pb_Axiom_l_inv {pb Γ cst u args cdecl T} :
@@ -2423,7 +2423,6 @@ Section ConvRedConv.
     induction h.
     - constructor => //.
       1-2:rewrite is_open_fix_or_cofix //.
-      cbn; reflexivity.
     - etransitivity.
       + eapply IHh.
       + destruct r as [hlen [onone [ay az]]].
@@ -2546,7 +2545,6 @@ Section ConvRedConv.
       induction h.
       - repeat split; try reflexivity.
         constructor => //; rewrite ?is_open_fix_or_cofix //.
-        cbn; reflexivity.
       - destruct r as [hl [r _]].
         assert (is_open_mfix Γ y).
         { eapply (is_open_fix_onone2) in r; intuition auto.
@@ -3726,8 +3724,7 @@ Section CumulSubst.
     intros wf [cl eq].
     split.
     { rewrite on_free_vars_ctx_app wf /=.
-      eapply on_free_vars_ctx_impl; tea => //.
-      congruence. }
+      eapply on_free_vars_ctx_impl; tea. done. }
     induction eq.
     - simpl. constructor.
     - constructor; auto.

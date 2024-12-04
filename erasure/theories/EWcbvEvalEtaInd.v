@@ -82,7 +82,7 @@ Proof.
   generalize (Nat.le_refl #|mfix|).
   generalize #|mfix| at 1 4.
   induction n. intros. constructor; auto.
-  intros. constructor. eapply qfix => //. 2:tea. tea.
+  intros. constructor. eapply qfix => //.
   eapply IHn. lia. 2:tea. assumption.
 Qed.
 
@@ -92,7 +92,7 @@ Proof.
   generalize (Nat.le_refl #|mfix|).
   generalize #|mfix| at 1 4.
   induction n. intros. constructor; auto.
-  intros. constructor. eapply qcofix => //. 2:tea. tea.
+  intros. constructor. eapply qcofix => //.
   eapply IHn. lia. 2:tea. assumption.
 Qed.
 

@@ -1086,7 +1086,7 @@ Section Wcbv.
       depelim evr. depelim evr.
       rewrite !mkApps_app /=.
       eapply eval_box; tea.
-      eapply IHargs => //. eapply evl.
+      eapply IHargs => //.
   Qed.
 
   Lemma eval_mkApps_cong f f' l l' :

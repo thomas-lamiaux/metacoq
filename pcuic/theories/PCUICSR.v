@@ -1260,7 +1260,6 @@ Lemma ws_cumul_pb_terms_refl {cf} {Σ} {wfΣ : wf Σ} {Γ u} :
   ws_cumul_pb_terms Σ Γ u u.
 Proof.
   intros. eapply into_ws_cumul_pb_terms => //.
-  eapply All2_refl; reflexivity.
 Qed.
 
 Lemma map2_set_binder_name_expand_lets nas Γ Δ :
@@ -1374,7 +1373,6 @@ Proof.
   - eapply alpha_eq_subst_instance; tea.
   - rewrite /cstr_branch_context subst_instance_expand_lets_ctx subst_instance_subst_context //.
     rewrite instantiate_inds //.
-    reflexivity.
 Qed.
 
 Lemma skipn_nil_length {A} (l : list A) n : skipn n l = [] -> #|l| <= n.
@@ -1779,9 +1777,9 @@ Proof.
       eapply ws_cumul_ctx_pb_app; revgoals.
       3:eapply ws_cumul_ctx_pb_refl; eapply wf_local_closed_context; auto.
       split. apply ws_cumul_ctx_pb_refl. pcuic.
-      eapply eq_context_alpha_conv => //. now symmetry.
+      eapply eq_context_alpha_conv => //.
       eapply wf_local_closed_context. eapply typing_wf_local in hb.
-      eapply wf_local_alpha; tea. eapply All2_app => //. reflexivity.
+      eapply wf_local_alpha; tea. eapply All2_app => //.
       now apply typing_wf_local, wf_local_closed_context in hb.
       rewrite /brctx /ibrctx; len.
       rewrite case_branch_context_length //. }
@@ -1802,7 +1800,7 @@ Proof.
     assert (convbrctxsmash : Σ ⊢
         Γ ,,, smash_context [] (case_branch_context ci mdecl p (forget_types (bcontext br)) cdecl) =
         Γ ,,, smash_context [] brctx).
-    { eapply conv_context_smash_end; tea. now symmetry. }
+    { eapply conv_context_smash_end => //. }
     assert (spbrctx : spine_subst Σ Γ (skipn (ind_npars mdecl) args) (List.rev (skipn (ind_npars mdecl) args))
       (smash_context [] prebrctx)).
     { pose proof (spine_subst_smash idxsubst0).
@@ -2068,7 +2066,7 @@ Proof.
       rewrite -(firstn_skipn (ind_npars mdecl) args).
       eapply ws_cumul_pb_mkApps; tea.
       eapply ws_cumul_pb_refl => //.
-      eapply All2_app. eapply All2_symP => //. intro; now symmetry.
+      eapply All2_app. eapply All2_symP => //.
       rewrite firstn_skipn //.
       rewrite firstn_skipn. constructor => //.
       { rewrite on_free_vars_mkApps /= //. }
@@ -2191,7 +2189,7 @@ Proof.
     move/(PCUICAlpha.inst_case_predicate_context_eq wfp') => eqctx.
     have wfpctx : wf_local Σ (Γ,,, inst_case_predicate_context (set_pparams p params')).
     { eapply wf_local_alpha; tea; auto.
-      eapply All2_app => //. reflexivity. }
+      eapply All2_app => //. }
     have eqpctx : Σ ⊢ Γ ,,, pctx = Γ ,,, case_predicate_context ci mdecl idecl (set_pparams p params').
     { symmetry.
       rewrite /pctx.
@@ -2319,7 +2317,7 @@ Proof.
     + rewrite /ptm.
       eapply ws_cumul_pb_mkApps.
       { eapply ws_cumul_pb_it_mkLambda_or_LetIn => //.
-        now symmetry. cbn [preturn set_pparams].
+        cbn [preturn set_pparams].
         eapply wt_cumul_pb_refl; eauto. }
       eapply All2_app; eauto. apply All2_tip.
       now eapply wt_cumul_pb_refl.
@@ -2338,8 +2336,7 @@ Proof.
     assert (closed_red1 Σ (Γ,,, case_predicate_context ci mdecl idecl p)
       (preturn p) preturn').
     { eapply closed_red1_eq_context_upto_names; tea.
-      rewrite PCUICCasesContexts.inst_case_predicate_context_eq => //.
-      reflexivity. }
+      rewrite PCUICCasesContexts.inst_case_predicate_context_eq => //. }
     eapply type_ws_cumul_pb; tea.
     * eapply type_Case; eauto. constructor; eauto. constructor; eauto.
       epose proof (wf_case_branches_types' (p:=set_preturn p preturn') ps _ brs isdecl (validity typec) H0
@@ -2848,7 +2845,7 @@ Proof.
     assert(convctx : conv_context cumulAlgo_gen Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix1)).
     { clear -wf wfΓ X X4 H2 fixl.
       eapply All2_fold_app => //.
-      apply conv_ctx_refl. clear X.
+      clear X.
       eapply All2_fold_impl.
       eapply (conv_decls_fix_context (Γ := Γ)) => //.
       move: H2.
@@ -2910,7 +2907,7 @@ Proof.
       apply a2. apply a2.
     * eapply All_nth_error in X0; eauto.
     * apply conv_cumul, conv_sym. destruct disj as [<-|[[red Hred] eq]] => //.
-      reflexivity. eapply PCUICCumulativity.red_conv.
+      eapply PCUICCumulativity.red_conv.
       apply red1_red, red.
 
   - (* Fix congruence in body *)
@@ -3020,7 +3017,7 @@ Proof.
       now eapply closed_red1_red.
     * eapply All_nth_error in X0; eauto.
     * apply conv_cumul, conv_sym. destruct disj as [<-|[[red Hred] eq]] => //.
-      reflexivity. eapply PCUICCumulativity.red_conv.
+      eapply PCUICCumulativity.red_conv.
       apply red1_red, red.
 
   - (* CoFix congruence in body *)

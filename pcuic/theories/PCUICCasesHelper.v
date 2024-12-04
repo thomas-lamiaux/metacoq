@@ -245,7 +245,6 @@ Section CaseBranchTypeBeta.
     move=> p.
     rewrite /case_branch_context -/(PCUICCases.case_branch_context ind mib p _ cb).
     rewrite PCUICCasesContexts.inst_case_branch_context_eq //.
-    reflexivity.
   Qed.
 
 
@@ -514,11 +513,10 @@ Proof.
 
   have [s ssparamsindxs] : ∑ s, spine_subst Σ Γ (pparams ++ indices) s
                         (ind_params mib,,, ind_indices oib)@[puinst]
-  by (apply: isType_mkApps_Ind_inv_spine => //; eassumption).
+  by (apply: isType_mkApps_Ind_inv_spine => //).
 
   apply: type_Case=> //.
-  - apply: ptyp.
-  - rewrite -/ci -/predctx. constructor=> //=; first reflexivity.
+  - rewrite -/ci -/predctx. constructor=> //=.
     apply: (spine_subst_ctx_inst ssparamsindxs).
   - have wfbrs : wf_branches oib (map2 (make_br ind mib) (ind_ctors oib) brs).
     {

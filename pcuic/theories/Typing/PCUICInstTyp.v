@@ -591,7 +591,6 @@ Proof.
         now eapply closedn_on_free_vars.
       * eapply subject_closed in hB.
         now eapply closedn_on_free_vars.
-      * apply hcum.
 Qed.
 
 Lemma typing_inst {cf : checker_flags} Σ Γ t A Δ σ {wfΣ : wf Σ.1} :
