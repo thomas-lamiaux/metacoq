@@ -139,6 +139,8 @@ Module Environment (T : Term).
 
   Definition judgment := judgment_ Sort.t term.
 
+  About context_decl.
+
   (** ** Declarations *)
   Notation context_decl := (context_decl term).
 
