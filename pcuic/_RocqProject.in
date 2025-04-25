@@ -103,6 +103,10 @@ theories/PCUICProgram.v
 theories/PCUICExpandLets.v
 theories/PCUICExpandLetsCorrectness.v
 
+theories/PCUICAuxToMove.v
+theories/PCUICViewInductive.v
+theories/PCUICNestedToMutual.v
+
 theories/Bidirectional/BDTyping.v
 theories/Bidirectional/BDToPCUIC.v
 theories/Bidirectional/BDFromPCUIC.v
