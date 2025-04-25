@@ -12,9 +12,12 @@ From MetaRocq.PCUIC Require Import PCUICAuxToMove PCUICViewInductive.
 
 (* Todo list:
 
-[ ] 1. Set trivial indices
+[X] 1. Set trivial indices
 [ ] 2. Finish Proof with triv indices
 [ ] 3. Figure out indices not to be inductive-inductive
+      => restrict from g_args to strict g_args
+      => proof should be the same except instantion to modify for strengthening
+          + proof it is "pos"
 
 *)
 
@@ -93,10 +96,9 @@ Section NestedToMutualInd.
 
   Context (spec_inst_uparams_a :
       All2 (fun x y  =>
-            let llargs := x.1 in let arg := x.2 in
-            let cdecl  := y.1 in let pos := y.2 in
-
-          (* fully applied ensured by typing*)
+          let llargs := x.1 in let arg := x.2 in
+          let cdecl  := y.1 in let pos := y.2 in
+        (* fully applied ensured by typing*)
           (#|llargs| = cdecl_to_arity cdecl)
           (* llargs are free *)
         * Alli (ind_sp_uparams_notin g_uparams_b) nb_cxt_sub llargs
@@ -285,31 +287,6 @@ Section NestedToMutualInd.
   Qed.
 
 
-  (* lemma for binders *)
-  Definition ind_sp_uparams_notin_tProd uparam k l t :
-    Alli (ind_sp_uparams_notin uparam) k l ->
-    ind_sp_uparams_notin uparam (k + #|l|) t ->
-    ind_sp_uparams_notin uparam k (it_tProd l t).
-  Proof.
-  Admitted.
-
-
-  Definition ind_sp_uparams_notin_tLambda_eq uparam k l t m :
-    m = k + #|l| ->
-    Alli (ind_sp_uparams_notin uparam) k l ->
-    ind_sp_uparams_notin uparam m t ->
-    ind_sp_uparams_notin uparam k (it_tLambda l t).
-  Proof.
-  Admitted.
-
-  Definition ind_sp_uparams_notin_mkApps uparam k u vs :
-    All (ind_sp_uparams_notin uparam k) vs ->
-    ind_sp_uparams_notin uparam k u ->
-    ind_sp_uparams_notin uparam k (mkApps u vs).
-  Proof.
-  Admitted.
-
-
 
 
 
@@ -333,6 +310,13 @@ Section NestedToMutualInd.
     WARNING => this creates inductive-inductive types!
             => it SHOULD be possible to be finer only add the context really
                needed and stay mutual
+
+      Sol1?: Make it so you only need the strict pos arg
+        V1:
+        => str pos can't be used in the rest of the context (needed anyway)
+        => a polymorphic argument ?
+        V2
+        => add by hand it in the pos condition, should work but v1 would be better
 
     This also forces us to add g_args ,,, g_largs ,,,  σ(l_nuparams) as
     arguments of the constructors so that they can be refered in indices.
@@ -383,8 +367,8 @@ Section NestedToMutualInd.
   (* Specialization of Arguments *)
 
   (* Substitute a strictly positive uniform parameter by its instantiation *)
-  (* largs, args : updated arg to sub [∀ largs, A_k args]
-     llargs, arg : updated instantiation [λ llargs, arg]
+  (* largs, args : already updated arg to sub [∀ largs, A_k args]
+     llargs, arg : already updated instantiation [λ llargs, arg]
   *)
   Definition sub_uparam (largs : list term) (args : list term) (llargs : list term) (arg : argument) : argument :=
     match arg with
@@ -447,7 +431,10 @@ Section NestedToMutualInd.
 
   (* Specialize an argument
   1. If it is a strpos uparams => substite by its instantiation
-  2. Otherwise propagate the instantiation  *)
+  2. Otherwise propagate the instantiation
+
+  pos sub_cxt : how deep after the sub_contxt
+  *)
   Definition specialize_argument (pos_sub_cxt : nat) (arg : argument) : argument :=
     match arg with
     | arg_is_free t =>
@@ -461,11 +448,13 @@ Section NestedToMutualInd.
         let llargs := map (lift0 (pos_sub_cxt + #|largs|)) llargs in
         let arg_to_sub := lift_argument (pos_sub_cxt + #|largs|) 0 arg_to_sub in
         sub_uparam largs' args' llargs arg_to_sub
-    (* Careful => also need to add indices for type checking *)
-    | arg_is_ind largs i args =>
+    | arg_is_ind largs i inst_uparams_indices =>
         let largs' := mapi_rec (fun i t => t.[up i inst_uparams]) largs pos_sub_cxt in
-        let args'  := map (fun t => t.[up (pos_sub_cxt + #|largs|) inst_uparams]) args in
-        arg_is_ind largs' (i + nb_g_block) args'
+        (* we need to add var for new nup + new indices - old_nup *)
+        let new_indices := tRels (pos_sub_cxt + #|largs|) (nb_g_nuparams + #|g_args_a| + #|g_largs_t|) in
+        (* nup are now indices so just need to be updated *)
+        let inst_uparams_indices'  := map (fun t => t.[up (pos_sub_cxt + #|largs|) inst_uparams]) inst_uparams_indices in
+        arg_is_ind largs' (i + nb_g_block) (new_indices ++ inst_uparams_indices')
     | arg_is_nested largs ind u insta_uparams inst_nuparams_indices =>
         let largs' := mapi_rec (fun i t => t.[up i inst_uparams]) largs pos_sub_cxt in
         let insta_uparams' := todot "to update" in
@@ -474,50 +463,48 @@ Section NestedToMutualInd.
         arg_is_nested largs' ind u insta_uparams' inst_nuparams_indices'
     end.
 
-Definition pos_specialize_argument pos_arg arg :
-  positive_argument nb_l_block l_uparams_b true (nb_l_nuparams + pos_arg) arg ->
-  positive_argument nb_m_block g_uparams_b true (nb_cxt_sub + nb_l_nuparams + pos_arg)
-    (specialize_argument (nb_l_nuparams + pos_arg) arg).
-Proof.
-  intros H. induction H; cbn.
-  + apply pos_arg_is_free. apply inst_preserve_not_eq; only 1 : lia. assumption.
-  + rewrite <- Nat.add_assoc.
-    destruct (nth k inst_uparams_a err_arg) as [llargs arg_to_sub] eqn:H.
-    apply eq_prod in H as [Hfst Hsnd].
-    apply pos_sub_uparams. all: cbn_length.
-    - apply Alli_notin_eq => //. lia.
-    - apply All_notin_eq => //. lia.
-    - rewrite - e0 -Hfst. symmetry.
-      apply (All2_nth (fun n x => n = #|x.1|)); only 1: solve_length.
-      apply fapp_inst_uparams.
-
-    - eapply (Alli_map_gen_eq (n := nb_cxt_sub) (k := nb_l_nuparams + pos_arg + #|largs|)).
-      1: lia.
-      1: { intros n x H. rewrite Nat.add_comm. unfold ind_sp_uparams_notin.
-            rewrite -shiftnP_add. rewrite -{1}(Nat.add_0_r (nb_l_nuparams + pos_arg +
-            #|largs|)). apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn.
-            exact H.
-      }
-      rewrite -Hfst. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
-      apply positive_inst_llargs.
-    - unshelve eapply pos_lift_argument_eq.
-      * exact (nb_cxt_sub + #|llargs|).
-      * lia.
-      (* the arguments we subtitute is positive ???*)
-      * rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
-        admit.
-  + apply pos_arg_is_ind.
-    - reflexivity.
-    - lia.
-    - apply Alli_notin_eq => //. lia.
-    - apply All_notin_eq => //. solve_length.
-  + apply pos_arg_is_nested with (mdecl := mdecl).
-    - reflexivity.
-    - admit.
-    - assumption.
-    - admit.
-    - admit.
-Admitted.
+  Definition pos_specialize_argument pos_arg arg :
+    positive_argument nb_l_block l_uparams_b true (nb_l_nuparams + pos_arg) arg ->
+    positive_argument nb_m_block g_uparams_b true (nb_cxt_sub + nb_l_nuparams + pos_arg)
+      (specialize_argument (nb_l_nuparams + pos_arg) arg).
+  Proof.
+    intros H. induction H; cbn.
+    + apply pos_arg_is_free. apply inst_preserve_not_eq; only 1 : lia. assumption.
+    + rewrite <- Nat.add_assoc.
+      destruct (nth k inst_uparams_a err_arg) as [llargs arg_to_sub] eqn:H.
+      apply eq_prod in H as [Hfst Hsnd].
+      apply pos_sub_uparams. all: cbn_length.
+      - apply Alli_notin_eq => //. lia.
+      - apply All_notin_eq => //. lia.
+      - rewrite - e0 -Hfst. symmetry.
+        apply (All2_nth (fun n x => n = #|x.1|)); only 1: solve_length.
+        apply fapp_inst_uparams.
+      - eapply (Alli_map_gen_eq (n := nb_cxt_sub) (k := nb_l_nuparams + pos_arg + #|largs|)).
+        * lia.
+        * intros n x H. rewrite Nat.add_comm. unfold ind_sp_uparams_notin.
+          rewrite -shiftnP_add. rewrite -{1}(Nat.add_0_r (nb_l_nuparams + pos_arg + #|largs|)).
+          apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn. exact H.
+        * rewrite -Hfst. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
+          apply positive_inst_llargs.
+      - unshelve eapply pos_lift_argument_eq.
+        * exact (nb_cxt_sub + #|llargs|).
+        * lia.
+        (* the arguments we subtitute is positive ???*)
+        * rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
+          admit.
+    + apply pos_arg_is_ind.
+      - reflexivity.
+      - lia.
+      - apply Alli_notin_eq => //. lia.
+      - apply All_app_inv; cbn_length.
+        -- unfold tRels. apply All_rev_pointwise_map. cbn.
+           intros. apply shiftnP_lt. lia.
+        -- apply All_notin_eq => //. solve_length.
+    + apply pos_arg_is_nested with (mdecl := mdecl) => //.
+      - admit.
+      - admit.
+      - admit.
+  Admitted.
 
 
   (* The instanciation of the uniform parameters is defined in the context:
@@ -559,10 +546,9 @@ Admitted.
       - apply pos_cstr_new_args.
       - eapply Alli_mapi; only 2: exact pos_cstr_args.
         intros. apply_eq (pos_specialize_argument i x) => //.
-        rewrite nb_new_args_unfold; lia.
+        solve_length.
     (* pos indices *)
-    + rewrite length_app nb_new_args_unfold ! mapi_length.
-      apply All_app_inv.
+    + cbn_length. apply All_app_inv.
       - unfold tRels. apply All_rev_pointwise_map; cbn.
         intros. apply shiftnP_lt. lia.
       - apply All_notin_eq; only 1: lia. assumption.
@@ -583,7 +569,8 @@ Admitted.
   Proof.
     intros [Ha Hb]; split; cbn.
     - now eapply All_map; only 1: apply pos_specialize_ctor.
-    - admit. (* issue => too much g_args *)
+    (* one extra case if you want to prove it is not inductiv inductive *)
+    - admit.
   Admitted.
 
 End NestedToMutualInd.
@@ -637,7 +624,11 @@ Section NestedToMutualIndb.
       then (let new_indb := map (specialize_one_inductive_body (nb_g_block + #|acc_indb|)
                                   g_uparams_b g_nuparams nargs largs mdecl.(ind_nuparams)
                                   inst_uparams) mdecl.(ind_bodies) in
-          let new_arg := arg_is_ind largs (pos_indb + nb_g_block + #|acc_indb|) todo in
+            (* we need to add var for new nup + new indices i.e *)
+            let new_indices := tRels 0 (nb_g_nuparams + #|nargs| + #|largs|) in
+
+          let new_arg := arg_is_ind largs (pos_indb + nb_g_block + #|acc_indb|)
+                          (new_indices ++ inst_nuparams_indices) in
           (nargs ++ [new_arg], acc_indb ++ new_indb))
       else (nargs ++ [arg], acc_indb)
     | _ => (nargs ++ [arg], acc_indb)
@@ -660,14 +651,16 @@ Section NestedToMutualIndb.
     destruct p as [pos_l_nuparams pos_l_indb]. split.
     + apply Alli_app_inv; only 1: (eapply Alli_impl; tea; intros; apply pos_arg_inc) => //.
       repeat constructor => //; try lia.
-      admit. (* new indices -> to solve *)
+      apply All_app_inv => //.
+      unfold tRels. apply All_rev_pointwise_map. cbn.
+      intros. apply shiftnP_lt. lia.
     + apply All_app_inv; only 1: (eapply All_impl; tea; intros; apply pos_idecl_inc) => //.
       eapply All_map; [| apply pos_l_indb ].
       intros idecl. apply pos_specialize_idecl => //.
       (* * assumption. move => //. eapply Alli_impl; [ easy | auto using pos_arg_inc ]. *)
       eapply All2_impl; tea. intros [llargs arg] [cdecl pos] [[fapp pos_llargs] pos_arg].
       cbn in *. repeat split; tea. apply pos_arg_inc => //.
-  Admitted.
+  Qed.
 
   Definition length1_nested_to_mutual_one_argument acc arg :
     #|(nested_to_mutual_one_argument acc arg).1| = 1 + #|acc.1|.

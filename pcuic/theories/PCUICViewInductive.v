@@ -236,12 +236,39 @@ Section PositiveIndBlock.
   Qed.
 
 
+
+  (* lemma for binders *)
+  Definition ind_sp_uparams_notin_tProd k l t :
+    Alli (ind_sp_uparams_notin) k l ->
+    ind_sp_uparams_notin (k + #|l|) t ->
+    ind_sp_uparams_notin k (it_tProd l t).
+  Proof.
+    todo " totod".
+  Qed.
+
   Definition ind_sp_uparams_notin_tLambda (k : nat) (l : list term) (t : term) :
     Alli (ind_sp_uparams_notin) k l ->
     ind_sp_uparams_notin (k + #|l|) t ->
     ind_sp_uparams_notin k (it_tLambda l t).
   Proof.
-  todo " totod".
+    todo " totod".
+  Qed.
+
+  Definition ind_sp_uparams_notin_tLambda_eq k l t m :
+    m = k + #|l| ->
+    Alli (ind_sp_uparams_notin) k l ->
+    ind_sp_uparams_notin m t ->
+    ind_sp_uparams_notin k (it_tLambda l t).
+  Proof.
+    todo " totod".
+  Qed.
+
+  Definition ind_sp_uparams_notin_mkApps k u vs :
+    All (ind_sp_uparams_notin k) vs ->
+    ind_sp_uparams_notin k u ->
+    ind_sp_uparams_notin k (mkApps u vs).
+  Proof.
+    todo " totod".
   Qed.
 
   (* Positivity part *)
@@ -347,6 +374,7 @@ Section PositiveIndBlock.
   *)
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
       All positive_constructor indb.(ind_ctors)
+    (* To add to prevent inductive inductive *)
     * Alli (sp_uparams_notin) #|nuparams| (map decl_type (rev indb.(ind_indices))).
 
 End PositiveIndBlock.
