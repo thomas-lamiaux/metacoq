@@ -10,6 +10,10 @@ From MetaRocq.PCUIC Require Import PCUICSigmaCalculus PCUICInstConv.
 From MetaRocq.PCUIC Require Import PCUICAuxToMove.
 Import PCUICEnvironment.
 
+(* From Ltac2 Require Import Ltac2.
+
+Ltac2  *)
+
 (* Todo list:
 
 [ ] 1. Translation view to nested
