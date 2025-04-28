@@ -24,6 +24,8 @@ Ltac2  *)
 
 *)
 
+Module View.
+
 Axiom todo_ : forall {A}, A.
 #[warn(note="TO IMPLEMENT")] Notation todo := todo_.
 
@@ -37,7 +39,7 @@ Axiom todot_ : forall {A}, string -> A.
   - a term t that does not contain the ind nor the sp_uparams
   - of the form (∀ x1 ... xn, A / Ind i / tInd ...
 *)
-(* Unset Elimination Schemes. *)
+Unset Elimination Schemes.
 
 Inductive argument : Type :=
 | arg_is_free      (t : term)
@@ -46,32 +48,28 @@ Inductive argument : Type :=
 | arg_is_nested    (largs : list term) (ind : inductive) (u : Instance.t)
                     (inst_uparams : list (list term * argument)) (inst_nuparams_indices : list term).
 
-
-(* Fixpoint argument_rect (P : argument -> Type)
+Fixpoint argument_rect (P : argument -> Type)
   (Harg_is_free : (forall t : term, P (arg_is_free t)))
   (Harg_is_sp_uparam : forall (largs : list term) (k : nat) (args : list term),
-    P (arg_is_sp_uparam largs k args))
+                        P (arg_is_sp_uparam largs k args))
   (Harg_is_ind : forall (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term),
-    P (arg_is_ind largs pos_indb inst_nuparams_indices))
+                 P (arg_is_ind largs pos_indb inst_nuparams_indices))
   (Harg_is_nested : forall (largs : list term) (ind : inductive) (u : Instance.t)
-    (inst_uparams : list argument)(pos_inst_uparams : All P inst_uparams)
-    (inst_nuparams_indices : list term),
-    P (arg_is_nested largs ind u inst_uparams inst_nuparams_indices))
-  (a : argument) : P a.
+                    (inst_uparams : list (list term * argument))
+                    (pos_inst_uparams : All (fun x => P x.2) inst_uparams)
+                    (inst_nuparams_indices : list term),
+                    P (arg_is_nested largs ind u inst_uparams inst_nuparams_indices)):
+  forall (a : argument), P a.
 Proof.
-  destruct a.
-  - now apply Harg_is_free.
-  - now apply Harg_is_sp_uparam.
-  - now apply Harg_is_ind.
+  intros a; destruct a.
+  - apply Harg_is_free.
+  - apply Harg_is_sp_uparam.
+  - apply Harg_is_ind.
   - apply Harg_is_nested. induction inst_uparams; constructor.
     apply argument_rect; eauto. apply IHinst_uparams.
-Qed. *)
+Qed.
 
-(* Set Elimination Schemes. *)
-
-
-
-
+Set Elimination Schemes.
 
 (* A constructor is of the form (∀ args, tRel (n - cstr_pos -1) up nup indices *)
 Record constructor_body := {
@@ -83,14 +81,13 @@ Record constructor_body := {
   cstr_args : list argument;
   (** Indices of the return type of the constructor *)
   cstr_indices : list term;
-}.
+  }.
 
 (* cstr_args : context;  ===>> list of arg (more work done)  *)
 (* cstr_type : term;     ===>> removed because inferred *)
 (* cstr_arity : nat;     ===>> no link pos
     cstr_pos : nat        ===>> added cause easier to check for pos
 *)
-
 
 (** Data associated to a single inductive in a mutual inductive block. *)
 Record one_inductive_body := {
@@ -111,7 +108,8 @@ Record one_inductive_body := {
   (** Names and types of primitive projections, if any. *)
     (* ind_projs : list projection_body; => removed no link pos *)
   (** Relevance of the inductive. *)
-  ind_relevance : relevance }.
+  ind_relevance : relevance
+  }.
 
 
 
@@ -129,7 +127,8 @@ Record mutual_inductive_body := {
       and information about the local universes if polymorphic. *)
   ind_universes : universes_decl;
   (** Variance information. `None` when non-cumulative. *)
-  ind_variance : option (list Universes.Variance.t) }.
+  ind_variance : option (list Universes.Variance.t)
+  }.
 
   (* ind_npars : nat ===>> computed  *)
   (* ind_params : context; => split in ind_uparams and ind_nuparams *)
@@ -137,7 +136,7 @@ Record mutual_inductive_body := {
 
 
 (* functions on arguments *)
-Fixpoint argument_to_term (nb_block : nat) (pos_arg : nat) (arg : argument) {struct arg} : term :=
+Definition argument_to_term (nb_block : nat) (pos_arg : nat) (arg : argument) : term :=
   match arg with
   | arg_is_free t => t
   | arg_is_sp_uparam largs k args =>
@@ -163,7 +162,7 @@ Definition idecl_to_type : context -> one_inductive_body -> term :=
   it_mkLambda_or_LetIn (params ,,, idecl.(ind_indices)) (tSort idecl.(ind_sort)).
 
 
-Axiom (mutual_to_view : PCUICEnvironment.mutual_inductive_body -> mutual_inductive_body).
+Axiom (PCUICEnv_ind_uparams : PCUICEnvironment.mutual_inductive_body -> list (context_decl × bool)).
 Axiom (E : global_env).
 
 
@@ -238,6 +237,7 @@ Section PositiveIndBlock.
 
 
   (* lemma for binders *)
+  (* already existing ??? on_free_var directly *)
   Definition ind_sp_uparams_notin_tProd k l t :
     Alli (ind_sp_uparams_notin) k l ->
     ind_sp_uparams_notin (k + #|l|) t ->
@@ -293,6 +293,8 @@ Section PositiveIndBlock.
 
   Reserved Notation " lax |> size_cxt |arg+> t " (at level 50, t at next level).
 
+  (* Unset Elimination Schemes. *)
+
   Inductive positive_argument (lax : bool) (size_cxt : nat) : argument -> Type :=
   | pos_arg_is_free t :
     ind_sp_uparams_notin size_cxt t ->
@@ -328,18 +330,16 @@ Section PositiveIndBlock.
     Alli ind_sp_uparams_notin size_cxt largs ->
     (* declared mdecl + pos_ind *)
     lookup_minductive E kname = Some mdecl ->
-    pos_ind < #|ind_bodies (mutual_to_view mdecl)| ->
+    pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
     (* inst_uparams are positive *)
     All2 (fun x y =>
-      let llargs := x.1 in let arg := x.2 in
-      let cdecl  := y.1 in let pos := y.2 in
       (* fully applied ensured by typing*)
-      (#|llargs| = cdecl_to_arity cdecl)
+      (#|x.1| = cdecl_to_arity y.1)
       (* llargs are free *)
-      * Alli (ind_sp_uparams_notin) (size_cxt + #|largs|) llargs
+      * Alli (ind_sp_uparams_notin) (size_cxt + #|largs|) x.1
       (* args are pos lax or strict depending if you can nest or not *)
-      * positive_argument pos (size_cxt + #|largs| + #|llargs|) arg
-    ) inst_uparams (rev (ind_uparams (mutual_to_view mdecl)))
+      * positive_argument y.2 (size_cxt + #|largs| + #|x.1|) x.2
+    ) inst_uparams (rev (PCUICEnv_ind_uparams mdecl))
     ->
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
     All (ind_sp_uparams_notin (size_cxt + #|largs|)) inst_nuparams_indices ->
@@ -347,6 +347,82 @@ Section PositiveIndBlock.
                               inst_uparams inst_nuparams_indices
 
   where "lax |> size_cxt |arg+> t " := (positive_argument lax size_cxt t) : type_scope.
+
+
+  Inductive All2_param1 {A B R} (PR : forall a b, R a b -> Type) : forall {lA lB}, All2 R lA lB -> Type :=
+  | All2_nil_param1 : All2_param1 PR (@All2_nil A B R)
+  | All2_cons : forall (x : A) (y : B) (l : list A) (l' : list B),
+                forall (r : R x y), PR _ _ r ->
+                forall (al : All2 R l l'), All2_param1 PR al ->
+                All2_param1 PR (All2_cons r al).
+
+  Definition th_fonda_All2_param1 {A B R} PR (HPR : forall a b r, PR a b r) :
+    forall lA lB (x : @All2 A B R lA lB), All2_param1 PR x.
+  Proof.
+    intros lA lB x. induction x; constructor.
+    apply HPR. apply IHx.
+  Defined.
+
+  Definition positive_argument_rect'
+    (P : forall {lax size_cxt arg}, positive_argument lax size_cxt arg -> Type)
+    (P_arg_is_free :
+        forall lax size_cxt (t : term) (i : ind_sp_uparams_notin size_cxt t),
+        (* ------------------------ *)
+        P (pos_arg_is_free lax size_cxt t i)
+      )
+    (P_arg_is_sp_uparams :
+        forall lax size_cxt (largs : list term) (k : nat) (args : list term)
+        (e : lax = true) (pos_k : k < #|uparams_b|)
+        (is_sp : nth k (map snd (rev uparams_b)) false)
+        (fapp : nth k (rev uparams_nb_args) 0 = #|args|)
+        (notin_largs : Alli (fun (pos_arg : nat) (x : term) => ind_sp_uparams_notin pos_arg x) size_cxt largs)
+        (notin_args : All (fun x : term => ind_sp_uparams_notin (size_cxt + #|largs|) x) args),
+        (* ------------------------ *)
+        P (pos_arg_is_sp_uparams lax size_cxt largs k args e pos_k is_sp fapp notin_largs notin_args)
+      )
+    (P_arg_is_ind :
+        forall lax size_cxt (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
+        (e : lax = true) (pos_ind : pos_indb < nb_block)
+        (notin_largs : Alli (fun (pos_arg : nat) (x : term) => ind_sp_uparams_notin pos_arg x) size_cxt largs)
+        (notin_args : All (fun x : term => ind_sp_uparams_notin (size_cxt + #|largs|) x) inst_nuparams_indices),
+        (* ------------------------ *)
+        P (pos_arg_is_ind lax size_cxt largs pos_indb inst_nuparams_indices
+              e pos_ind notin_largs notin_args)
+      )
+    (P_arg_is_nested lax size_cxt :
+        forall lax size_cxt (largs : list term) (kname : kername) (pos_ind : nat) (u : Instance.t)
+        (inst_uparams : list (list term × argument)) (inst_nuparams_indices : list term)
+        (mdecl : PCUICEnvironment.mutual_inductive_body)
+        (e : lax = true)
+        (notin_largs : Alli (fun (pos_arg : nat) (x : term) => ind_sp_uparams_notin pos_arg x) size_cxt largs)
+        (ind_env_defined : lookup_minductive E kname = Some mdecl)
+        (ind_pos_defined : pos_ind < #|PCUICEnvironment.ind_bodies mdecl|)
+        (pos_nested :
+            All2 (fun (x : list term × argument) (y : context_decl × bool) =>
+              (#|x.1| = cdecl_to_arity y.1
+              × Alli (fun (pos_arg : nat) (x0 : term) => ind_sp_uparams_notin pos_arg x0) (size_cxt + #|largs|) x.1)
+              * (positive_argument y.2 (size_cxt + #|largs| + #|x.1|) x.2))
+            inst_uparams (rev (PCUICEnv_ind_uparams mdecl)))
+        (Ppos_nested : All2_param1 (fun x y r => P r.2) pos_nested)
+        (notin_instance : All (fun x : term => ind_sp_uparams_notin (size_cxt + #|largs|) x) inst_nuparams_indices),
+        (* ------------------------ *)
+        P (pos_arg_is_nested lax size_cxt largs kname pos_ind u inst_uparams inst_nuparams_indices mdecl
+              e notin_largs ind_env_defined ind_pos_defined pos_nested notin_instance)
+      )
+    : forall lax size_cxt arg (p : positive_argument lax size_cxt arg), P p.
+  Proof.
+    fix rec 3.
+    intros ? ? ? p. destruct p as [ | | | ? ? ? ? ? ? ? ? ? ? ? pos_nested].
+    - apply P_arg_is_free.
+    - apply P_arg_is_sp_uparams.
+    - apply P_arg_is_ind.
+    - apply P_arg_is_nested.
+      (* apply th_fonda_All2_param1. intros. apply rec. *)
+      induction pos_nested; constructor; cbn.
+      destruct x; destruct y; cbn.
+      apply rec. apply IHpos_nested.
+  Admitted.
+
 
   Definition positive_argument_strict {size_cxt arg} :
     positive_argument false size_cxt arg ->
@@ -385,6 +461,7 @@ Definition positive_mutual_inductive_body (mdecl : mutual_inductive_body) : Type
         mdecl.(ind_nuparams)) mdecl.(ind_bodies).
 
 
+(* Properties about positivity *)
 Fixpoint pos_arg_inc {lax nb_block up pos_arg arg} k :
   positive_argument nb_block up pos_arg lax arg ->
   positive_argument (nb_block + k) up pos_arg lax arg.
@@ -452,5 +529,31 @@ Proof.
   intros ->. apply pos_lift_argument.
 Qed.
 
+End View.
+
+(*
+(* PCUIC.Env -> View *)
+Fixpoint inductive_to_view (mdecl : PCUICEnvironment.mutual_inductive_body)
+  i Γ t (pos_t : positive_cstr mdecl i Γ t) : View.argument :=
+  match pos_t with
+  (* | pos_concl l (headrel := (#|mdecl.(ind_bodies)| - S i + #|Γ|)%nat) :
+  All (closedn #|Γ|) l ->
+  mdecl @ i ;;; Γ |+> mkApps (tRel headrel) l *)
+  | pos_concl l _ => todo ""
+
+  (* | pos_let na b ty ty' :
+    mdecl @ i ;;; Γ |+> ty' {0 := b} ->
+    mdecl @ i ;;; Γ |+> tLetIn na b ty ty' *)
+  | pos_let na b ty ty' Hty0 => todo ""
+
+  (* | pos_ass na ty ty' :
+    mdecl ;;; Γ |arg+> ty ->
+    mdecl @ i ;;; vass na ty :: Γ |+> ty' ->
+    mdecl @ i ;;; Γ |+> tProd na ty ty' *)
+  | pos_ass na arg B pos_arg pos_B => todo ""
+  end.
+*)
 
 
+
+(* View -> PCUIC.Env *)

@@ -13,8 +13,9 @@ From MetaRocq.PCUIC Require Import PCUICAuxToMove PCUICViewInductive.
 (* Todo list:
 
 [X] 1. Set trivial indices
-[ ] 2. Finish Proof with triv indices
-[ ] 3. Figure out indices not to be inductive-inductive
+[ ] 2. Finish Function Nested to Mutual (cas nesté)
+[ ] 3. Proof with triv indices
+[ ] 4. Figure out indices not to be inductive-inductive
       => restrict from g_args to strict g_args
       => proof should be the same except instantion to modify for strengthening
           + proof it is "pos"
