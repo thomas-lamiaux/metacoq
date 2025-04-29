@@ -9,6 +9,8 @@ From MetaRocq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICOnFreeVars PCUICI
 From MetaRocq.PCUIC Require Import PCUICSigmaCalculus PCUICInstConv.
 Import PCUICEnvironment.
 From MetaRocq.PCUIC Require Import PCUICAuxToMove PCUICViewInductive.
+Import ViewInductive.
+
 
 (* Todo list:
 
@@ -651,7 +653,8 @@ Section NestedToMutualIndb.
     pose proof (p := E_pos kname); rewrite e0 in p; cbn in p.
     destruct p as [pos_l_nuparams pos_l_indb]. split.
     + apply Alli_app_inv; only 1: (eapply Alli_impl; tea; intros; apply pos_arg_inc) => //.
-      repeat constructor => //; try lia.
+      repeat constructor => //.
+      1: { rewrite -mutual_to_view_ind. lia. }
       apply All_app_inv => //.
       unfold tRels. apply All_rev_pointwise_map. cbn.
       intros. apply shiftnP_lt. lia.
@@ -659,7 +662,8 @@ Section NestedToMutualIndb.
       eapply All_map; [| apply pos_l_indb ].
       intros idecl. apply pos_specialize_idecl => //.
       (* * assumption. move => //. eapply Alli_impl; [ easy | auto using pos_arg_inc ]. *)
-      eapply All2_impl; tea. intros [llargs arg] [cdecl pos] [[fapp pos_llargs] pos_arg].
+      eapply All2_impl; only 1: rewrite -mutual_to_view_uparams; tea.
+      intros [llargs arg] [cdecl pos] [[fapp pos_llargs] pos_arg].
       cbn in *. repeat split; tea. apply pos_arg_inc => //.
   Qed.
 
@@ -809,7 +813,7 @@ Section NestedToMutualIndb.
       split.
       + apply All_app_inv.
         * eapply All_impl; tea.
-          intros; eapply pos_ctor_inc; tea.
+          intros; eapply pos_ctor_inc_le; tea.
           apply add_le_mono_l_proj_l2r, length2_nested_to_mutual_argument.
         * constructor; only 2: constructor.
           eapply fst.
@@ -886,7 +890,7 @@ Section NestedToMutualIndb.
       split.
       + apply All_app_inv.
         * eapply All_impl; tea.
-          intros; eapply pos_ctor_inc_le; tea.
+          intros; eapply pos_idecl_inc_le; tea.
           apply add_le_mono_l_proj_l2r, length2_nested_to_mutual_ctor.
         * constructor; only 2: constructor.
           eapply fst.

@@ -24,15 +24,16 @@ Ltac2  *)
 
 *)
 
-Module View.
-
 Axiom todo_ : forall {A}, A.
 #[warn(note="TO IMPLEMENT")] Notation todo := todo_.
 
 Axiom todot_ : forall {A}, string -> A.
 #[warn(note="TO IMPLEMENT")] Notation todot x := (todot_ x).
 
+Axiom (PCUICEnv_ind_uparams : PCUICEnvironment.mutual_inductive_body -> list (context_decl × bool)).
 
+
+Module ViewInductive.
 (* *** Simplified Def of Inductive Types *** *)
 
 (* An argument is either:
@@ -162,7 +163,6 @@ Definition idecl_to_type : context -> one_inductive_body -> term :=
   it_mkLambda_or_LetIn (params ,,, idecl.(ind_indices)) (tSort idecl.(ind_sort)).
 
 
-Axiom (PCUICEnv_ind_uparams : PCUICEnvironment.mutual_inductive_body -> list (context_decl × bool)).
 Axiom (E : global_env).
 
 
@@ -389,7 +389,7 @@ Section PositiveIndBlock.
         P (pos_arg_is_ind lax size_cxt largs pos_indb inst_nuparams_indices
               e pos_ind notin_largs notin_args)
       )
-    (P_arg_is_nested lax size_cxt :
+    (P_arg_is_nested:
         forall lax size_cxt (largs : list term) (kname : kername) (pos_ind : nat) (u : Instance.t)
         (inst_uparams : list (list term × argument)) (inst_nuparams_indices : list term)
         (mdecl : PCUICEnvironment.mutual_inductive_body)
@@ -422,7 +422,6 @@ Section PositiveIndBlock.
       destruct x; destruct y; cbn.
       apply rec. apply IHpos_nested.
   Admitted.
-
 
   Definition positive_argument_strict {size_cxt arg} :
     positive_argument false size_cxt arg ->
@@ -461,38 +460,58 @@ Definition positive_mutual_inductive_body (mdecl : mutual_inductive_body) : Type
         mdecl.(ind_nuparams)) mdecl.(ind_bodies).
 
 
-(* Properties about positivity *)
-Fixpoint pos_arg_inc {lax nb_block up pos_arg arg} k :
-  positive_argument nb_block up pos_arg lax arg ->
-  positive_argument (nb_block + k) up pos_arg lax arg.
-Proof.
-Admitted.
 
-Fixpoint pos_ctor_inc {up nup ctor} k q :
-  k <= q ->
-  positive_constructor k up nup ctor ->
-  positive_constructor q up nup ctor.
+(* Properties about positivity *)
+Definition pos_arg_inc {lax nb_block up size_cxt arg} k :
+  positive_argument nb_block up lax size_cxt arg ->
+  positive_argument (nb_block + k) up lax size_cxt arg.
 Proof.
-Admitted.
+  intros pos_arg. induction pos_arg using positive_argument_rect'.
+  - constructor => //.
+  - constructor => //.
+  - constructor => //. lia.
+  - econstructor; tea.
+    induction Ppos_nested; cbn in *; constructor.
+    + destruct r as [[]]; repeat constructor => //.
+    + apply IHPpos_nested.
+Qed.
+
+Fixpoint pos_ctor_inc {up nb_block nup ctor} k :
+  positive_constructor nb_block up nup ctor ->
+  positive_constructor (nb_block + k) up nup ctor.
+Proof.
+  intros [pos_args pos_indices]; split => //.
+  eapply Alli_impl; tea.
+  intros; apply pos_arg_inc => //.
+Qed.
+
+Fixpoint pos_ctor_inc_le {up nb_block nup ctor} k :
+  nb_block <= k ->
+  positive_constructor nb_block up nup ctor ->
+  positive_constructor k up nup ctor.
+Proof.
+  intros p%(Arith_base.le_plus_minus_stt _ _); rewrite p.
+  apply pos_ctor_inc.
+Qed.
 
 Fixpoint pos_idecl_inc {nb_block up nup idecl} k :
   positive_one_inductive_body nb_block up nup idecl ->
   positive_one_inductive_body (nb_block + k) up nup idecl.
 Proof.
-Admitted.
+  intros [pos_ctor pos_indices]; split => //.
+  eapply All_impl; tea.
+  intros; apply pos_ctor_inc => //.
+Qed.
 
-Fixpoint pos_ctor_inc_le {up nup ctor} k q :
-  k <= q ->
-  positive_one_inductive_body k up nup ctor ->
-  positive_one_inductive_body q up nup ctor.
-Proof.
-Admitted.
-
-Fixpoint pos_idecl_inc_eq {nb_block up pos_arg idecl} k m :
-  m = nb_block + k ->
+Fixpoint pos_idecl_inc_le {nb_block up pos_arg idecl} k :
+  nb_block <= k ->
   positive_one_inductive_body nb_block up pos_arg idecl ->
-  positive_one_inductive_body m up pos_arg idecl.
-Proof. intros ->. apply pos_idecl_inc. Qed.
+  positive_one_inductive_body k up pos_arg idecl.
+Proof.
+  intros p%(Arith_base.le_plus_minus_stt _ _); rewrite p.
+  apply pos_idecl_inc.
+Qed.
+
 
 Fixpoint lift_argument n above (t : argument) : argument :=
   match t with
@@ -529,8 +548,19 @@ Proof.
   intros ->. apply pos_lift_argument.
 Qed.
 
-End View.
+End ViewInductive.
 
+Definition mutual_to_view : PCUICEnvironment.mutual_inductive_body ->
+                            ViewInductive.mutual_inductive_body :=
+  todot "to implem".
+
+Definition mutual_to_view_ind mdecl :
+  #|PCUICEnvironment.ind_bodies mdecl| = #|ViewInductive.ind_bodies (mutual_to_view mdecl)|.
+Admitted.
+
+Definition mutual_to_view_uparams mdecl :
+  PCUICEnv_ind_uparams mdecl = ViewInductive.ind_uparams (mutual_to_view mdecl).
+Admitted.
 (*
 (* PCUIC.Env -> View *)
 Fixpoint inductive_to_view (mdecl : PCUICEnvironment.mutual_inductive_body)
