@@ -12,11 +12,20 @@ Import PCUICEnvironment.
 
 (* Todo list:
 
-[ ] 1. Translation view to nested
-[ ] 2. Fix the positivity of ind
-[ ] 3. Translation ind to view
-[ ] 4. Proof pos ind -> pos view
-[ ] 5. Proof pos view -> pos ind
+### Positivity :
+[X] 1. Def view
+[X] 2. Def positivity
+[X] 3. Recursor Positivity
+[X] 4. Prove properties stablity addition block + lift
+
+### Ind to View :
+[ ] 1. Fix positive of Ind to include nested
+[ ] 2. Translation ind to view
+[ ] 3. Prove positivity is preserved
+
+### View to Ind :
+[ ] 1. Translation view to ind
+[ ] 2. prove positivity is preserved
 
 *)
 
@@ -409,7 +418,7 @@ Section PositiveIndBlock.
       )
     : forall lax size_cxt arg (p : positive_argument lax size_cxt arg), P p.
   Proof.
-    fix rec 3.
+    fix rec 4.
     intros ? ? ? p. destruct p as [ | | | ? ? ? ? ? ? ? ? ? ? ? pos_nested].
     - apply P_arg_is_free.
     - apply P_arg_is_sp_uparams.
@@ -419,8 +428,7 @@ Section PositiveIndBlock.
       induction pos_nested; constructor; cbn.
       destruct x; destruct y; cbn.
       apply rec. apply IHpos_nested.
-  Fail Defined.
-Admitted.
+  Defined.
 
   Definition positive_argument_strict {size_cxt arg} :
     positive_argument false size_cxt arg ->

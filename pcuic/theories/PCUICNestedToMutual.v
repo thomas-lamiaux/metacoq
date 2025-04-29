@@ -14,13 +14,22 @@ Import ViewInductive.
 
 (* Todo list:
 
-[X] 1. Set trivial indices
-[ ] 2. Finish Function Nested to Mutual (cas nesté)
-[ ] 3. Proof with triv indices
-[ ] 4. Figure out indices not to be inductive-inductive
-      => restrict from g_args to strict g_args
-      => proof should be the same except instantion to modify for strengthening
-          + proof it is "pos"
+[ ] 1. Specialize inductive block
+    [X] 1.1 all but nested case
+    [ ] 1.2 nested case
+    [ ] 1.3 indices
+[ ] 2. Proof positivity is preserved
+    [X] 2.1 all but nested case
+    [ ] 2.2 nested case
+    [ ] 2.3 indices
+[X] 3. Nested to Mutual
+[X] 4. Positivity is preserved
+
+Indices :
+=> restrict args pos strict (i.e. no rec call)
+=> suppose it, either add it to pos or prove it
+=> proof should be the same except instantion to modify
+  for strengthening + proof it is "pos"
 
 *)
 
