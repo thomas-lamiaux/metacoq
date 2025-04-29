@@ -15,7 +15,7 @@ Definition All_rev (A : Type) (P : A -> Type) (l : list A) :
 Proof.
 Admitted.
 
-Ltac cbn_length := repeat (rewrite ?length_app ?length_map ?List.length_rev ?length_rev ?mapi_length ?mapi_rec_length);
+Ltac cbn_length := repeat (rewrite ?length_app ?length_map ?List.length_rev ?length_rev ?mapi_length ?mapi_rec_length ?Nat.add_0_r);
 repeat (rewrite ?Nat.add_assoc).
 
 Tactic Notation "solve_length" := solve [cbn_length; lia].

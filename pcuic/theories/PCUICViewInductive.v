@@ -10,10 +10,6 @@ From MetaRocq.PCUIC Require Import PCUICSigmaCalculus PCUICInstConv.
 From MetaRocq.PCUIC Require Import PCUICAuxToMove.
 Import PCUICEnvironment.
 
-(* From Ltac2 Require Import Ltac2.
-
-Ltac2  *)
-
 (* Todo list:
 
 [ ] 1. Translation view to nested
@@ -312,6 +308,7 @@ Section PositiveIndBlock.
     Alli ind_sp_uparams_notin size_cxt largs ->
     (* ind + sp_uparams ∉ args *)
     All (ind_sp_uparams_notin (size_cxt + #|largs|)) args ->
+    (* -------------------------------------------------------------- *)
     lax |> size_cxt |arg+> arg_is_sp_uparam largs k args
 
   | pos_arg_is_ind largs pos_indb inst_nuparams_indices :
@@ -322,6 +319,7 @@ Section PositiveIndBlock.
     Alli ind_sp_uparams_notin size_cxt largs ->
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
     All (ind_sp_uparams_notin (size_cxt + #|largs|)) inst_nuparams_indices ->
+    (* -------------------------------------------------------------- *)
     lax |> size_cxt |arg+> arg_is_ind largs pos_indb inst_nuparams_indices
 
   | pos_arg_is_nested largs kname pos_ind u inst_uparams inst_nuparams_indices mdecl :
@@ -343,15 +341,15 @@ Section PositiveIndBlock.
     ->
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
     All (ind_sp_uparams_notin (size_cxt + #|largs|)) inst_nuparams_indices ->
+    (* -------------------------------------------------------------- *)
     lax |> size_cxt |arg+> arg_is_nested largs (mkInd kname pos_ind) u
                               inst_uparams inst_nuparams_indices
 
   where "lax |> size_cxt |arg+> t " := (positive_argument lax size_cxt t) : type_scope.
 
-
   Inductive All2_param1 {A B R} (PR : forall a b, R a b -> Type) : forall {lA lB}, All2 R lA lB -> Type :=
-  | All2_nil_param1 : All2_param1 PR (@All2_nil A B R)
-  | All2_cons : forall (x : A) (y : B) (l : list A) (l' : list B),
+  | All2_nil_param1 : All2_param1 PR ( @All2_nil A B R)
+  | All2_cons_param1 : forall (x : A) (y : B) (l : list A) (l' : list B),
                 forall (r : R x y), PR _ _ r ->
                 forall (al : All2 R l l'), All2_param1 PR al ->
                 All2_param1 PR (All2_cons r al).
@@ -421,7 +419,8 @@ Section PositiveIndBlock.
       induction pos_nested; constructor; cbn.
       destruct x; destruct y; cbn.
       apply rec. apply IHpos_nested.
-  Admitted.
+  Fail Defined.
+Admitted.
 
   Definition positive_argument_strict {size_cxt arg} :
     positive_argument false size_cxt arg ->
@@ -461,7 +460,7 @@ Definition positive_mutual_inductive_body (mdecl : mutual_inductive_body) : Type
 
 
 
-(* Properties about positivity *)
+(* Increasing the number of inductive block preserve positivity *)
 Definition pos_arg_inc {lax nb_block up size_cxt arg} k :
   positive_argument nb_block up lax size_cxt arg ->
   positive_argument (nb_block + k) up lax size_cxt arg.
@@ -513,42 +512,106 @@ Proof.
 Qed.
 
 
-Fixpoint lift_argument n above (t : argument) : argument :=
+(* Lifting an argument preserves positivity *)
+Fixpoint lift_argument n above (t : argument) {struct t} : argument :=
   match t with
   | arg_is_free t => arg_is_free (lift n above t)
   | arg_is_sp_uparam largs k args =>
-      let largs' := mapi (fun i => lift n (i + above)) largs in
-      let args' := map (lift n (#|largs| + above)) args in
+      let largs' := mapi (fun i => lift n (above + i)) largs in
+      let args' := map (lift n (above + #|largs|)) args in
       arg_is_sp_uparam largs' k args'
   | arg_is_ind largs pos_indb inst_nuparams_indices =>
-      let largs' := mapi (fun i => lift n (i + above)) largs in
-      let inst_nuparams_indices' := map (lift n (#|largs| + above)) inst_nuparams_indices in
+      let largs' := mapi (fun i => lift n (above + i)) largs in
+      let inst_nuparams_indices' := map (lift n (above + #|largs|)) inst_nuparams_indices in
       arg_is_ind largs' pos_indb inst_nuparams_indices'
   | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-      let largs' := mapi (fun i => lift n (i + above)) largs in
+      let largs' := mapi (fun i => lift n (above + i)) largs in
       let inst_uparams' := map
-        (fun '(llargs, arg) => ( mapi (fun i => lift n (i + #|largs| + above)) llargs,
-                                 lift_argument n (#|llargs| + #|largs| + above) arg))
+        (fun '(llargs, arg) => ( mapi (fun i => lift n (above + #|largs| + i)) llargs,
+                                 lift_argument n (above + #|largs| + #|llargs|) arg))
         inst_uparams in
-      let inst_nuparams_indices' := map (lift n (#|largs| + above)) inst_nuparams_indices in
+      let inst_nuparams_indices' := map (lift n (above + #|largs|)) inst_nuparams_indices in
       arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
   end.
 
-Definition pos_lift_argument {lax nb_block up pos_arg } arg n :
-  positive_argument nb_block up lax pos_arg arg ->
-  positive_argument nb_block up lax (pos_arg + n) (lift_argument n 0 arg).
+Definition on_free_vars_lift (p : nat -> bool) (c n k : nat)
+  (t : term) (ft : on_free_vars (shiftnP (c + k) p) t) :
+  on_free_vars (shiftnP (c + n + k) p) (lift n k t).
 Proof.
-Admitted.
+  rewrite -Nat.add_assoc Nat.add_comm -shiftnP_add.
+  apply on_free_vars_lift_impl.
+  rewrite shiftnP_add Nat.add_comm => //.
+Qed.
 
-Definition pos_lift_argument_eq {nb_block up pos_arg lax} arg n m :
+Definition on_free_vars_lift' (p : nat -> bool) (c n k : nat)
+  (t : term) (ft : on_free_vars (shiftnP (c + k) p) t) :
+  on_free_vars (shiftnP (c + (n + k)) p) (lift n k t).
+Proof.
+  rewrite Nat.add_assoc. apply on_free_vars_lift => //.
+Qed.
+
+Definition on_free_vars_lift_eq (p : nat -> bool) (b c n k : nat)
+  (t : term) (eqb : b = c + n + k) :
+  on_free_vars (shiftnP (c + k) p) t ->
+  on_free_vars (shiftnP b p) (lift n k t).
+Proof.
+  rewrite eqb. apply on_free_vars_lift.
+Qed.
+
+Definition pos_lift_argument {nb_block up lax size_cxt} arg p n k :
+  positive_argument nb_block up lax p arg ->
+  p = (size_cxt + k) ->
+  positive_argument nb_block up lax (size_cxt + n + k) (lift_argument n k arg).
+Proof.
+  intro pos_arg. revert k.
+  induction pos_arg using positive_argument_rect'; intros k0 ->.
+  + apply pos_arg_is_free. apply on_free_vars_lift => //.
+  + apply pos_arg_is_sp_uparams; cbn_length => //.
+    - eapply Alli_mapi; tea; cbn. intros i t.
+      rewrite -?(Nat.add_assoc _ k0 i). apply on_free_vars_lift => //.
+    - eapply All_map; tea; cbn. intros t.
+      rewrite -?(Nat.add_assoc _ k0 #|largs|). eapply on_free_vars_lift_eq => //.
+  + apply pos_arg_is_ind; cbn_length => //.
+    - eapply Alli_mapi; tea; cbn. intros i x.
+      rewrite -?(Nat.add_assoc _ k0 i). apply on_free_vars_lift => //.
+    - eapply All_map; tea; cbn. intros t.
+      rewrite -?(Nat.add_assoc _ k0 #|largs|). eapply on_free_vars_lift_eq => //.
+  + apply pos_arg_is_nested with (mdecl := mdecl); cbn_length => //.
+    - eapply Alli_mapi; tea; cbn. intros i x.
+      rewrite -?(Nat.add_assoc _ k0 i). apply on_free_vars_lift => //.
+    - fold lift_argument.
+       induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
+            [[fapp pos_llargs] pos_inst] Rxy RL IHRL ?]; constructor; eauto.
+       cbn in *; cbn_length; repeat split => //.
+      * eapply Alli_mapi; tea; cbn. intros.
+        replace (size_cxt + n + k0 + #|largs| + i)
+        with (size_cxt + n + (k0 + #|largs| + i)) by lia.
+        apply on_free_vars_lift.
+        replace (size_cxt + (k0 + #|largs| + i))
+        with (size_cxt + k0 + #|largs| + i) by lia.
+        assumption.
+      * clear RL IHRL notin_largs notin_instance IHPpos_nested.
+        replace (size_cxt + n + k0 + #|largs| + #|llargs|)
+        with (size_cxt + n + (k0 + #|largs| + #|llargs|)) by lia.
+        apply Rxy. lia.
+    - eapply All_map; tea; cbn. intros t.
+      rewrite -?(Nat.add_assoc _ k0 #|largs|). eapply on_free_vars_lift => //.
+Qed.
+
+Definition pos_lift_argument_eq0 {nb_block up pos_arg lax} arg n m :
   m = pos_arg + n ->
   positive_argument nb_block up lax pos_arg arg ->
   positive_argument nb_block up lax m (lift_argument n 0 arg).
 Proof.
-  intros ->. apply pos_lift_argument.
+  intros -> X. rewrite -{1}(Nat.add_0_r (_ + n)).
+  eapply pos_lift_argument; tea. lia.
 Qed.
 
 End ViewInductive.
+
+
+
+
 
 Definition mutual_to_view : PCUICEnvironment.mutual_inductive_body ->
                             ViewInductive.mutual_inductive_body :=

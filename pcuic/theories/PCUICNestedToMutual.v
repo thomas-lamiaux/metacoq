@@ -489,7 +489,7 @@ Section NestedToMutualInd.
           apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn. exact H.
         * rewrite -Hfst. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
           apply positive_inst_llargs.
-      - unshelve eapply pos_lift_argument_eq.
+      - unshelve eapply pos_lift_argument_eq0.
         * exact (nb_cxt_sub + #|llargs|).
         * lia.
         (* the arguments we subtitute is positive ???*)
