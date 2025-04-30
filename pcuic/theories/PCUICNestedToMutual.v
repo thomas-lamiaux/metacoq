@@ -418,7 +418,8 @@ Section NestedToMutualInd.
     positive_argument nb_m_block g_uparams_b lax
       (nb_cxt_sub + pos_sub_cxt) (sub_uparam largs args llargs arg).
   Proof.
-    induction pos_arg; cbn.
+    remember (nb_cxt_sub + pos_sub_cxt + #|largs| + #|llargs|) as p eqn:Heqp.
+    induction pos_arg using positive_argument_rect' in Heqp |- *; cbn.
     + apply pos_arg_is_free. apply ind_sp_uparams_notin_tProd => //.
       apply ind_sp_uparams_notin_mkApps => //.
       eapply ind_sp_uparams_notin_tLambda_eq; tea.
@@ -428,31 +429,43 @@ Section NestedToMutualInd.
       - apply Alli_app_inv => //. eapply Alli_mapi. 2: eassumption.
         intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
-        all: solve_length.
+        all : rewrite ?Heqp; lia.
       - cbn_length. eapply All_map. 2: eassumption. cbn.
         intros x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
-        all: solve_length.
+        all : rewrite ?Heqp; lia.
     + apply pos_arg_is_ind => //; cbn_length.
       - apply Alli_app_inv => //. eapply Alli_mapi. 2: eassumption.
         intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
-        all: solve_length.
+        all : rewrite ?Heqp; lia.
       - cbn_length. eapply All_map. 2: eassumption. cbn.
         intros x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
-        all: solve_length.
+        all : rewrite ?Heqp; lia.
     + apply pos_arg_is_nested with (mdecl := mdecl) => //; cbn_length.
-      - apply Alli_app_inv => //. eapply Alli_mapi. 2: apply a.
+      - apply Alli_app_inv => //. eapply Alli_mapi. 2: eassumption.
         intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
-        all: solve_length.
-      - admit.
+        all : rewrite ?Heqp; lia.
+      - induction Ppos_nested; constructor. 2: apply IHPpos_nested.
+        destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
+        cbn_length; repeat split => //.
+        * eapply Alli_mapi. 2: eassumption.
+          intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
+          3: apply pos_args. 3: apply H.
+          all : rewrite ?Heqp; lia.
+        * clear p al Ppos_nested notin_instance IHPpos_nested.
+          rewrite Heqp in pos_l_arg.
+          eapply pos_subst_argument_eq.
+          4: apply pos_l_arg.
+          3: { apply All_rev. tea. }
+          all : solve_length.
       - cbn_length. eapply All_map. 2: eassumption. cbn.
         intros x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
-        all: solve_length.
-  Admitted.
+        all : rewrite ?Heqp; lia.
+  Qed.
 
   Definition err_arg : list term * argument
     := ([], arg_is_free (tVar "impossible case")).
