@@ -474,9 +474,9 @@ Section NestedToMutualInd.
   1. If it is a strpos uparams => substite by its instantiation
   2. Otherwise propagate the instantiation
 
-  pos sub_cxt : how deep after the sub_contxt need for lift sub
+  pos sub_cxt : how deep after the sub_contxt => needed to lift the instantiation
   *)
-  Definition specialize_argument (pos_sub_cxt : nat) (arg : argument) : argument :=
+  Fixpoint specialize_argument (pos_sub_cxt : nat) (arg : argument) : argument :=
     match arg with
     | arg_is_free t =>
         arg_is_free (t.[up pos_sub_cxt inst_uparams])
@@ -498,8 +498,12 @@ Section NestedToMutualInd.
         arg_is_ind largs' (i + nb_g_block) (new_indices ++ inst_uparams_indices')
     | arg_is_nested largs ind u insta_uparams inst_nuparams_indices =>
         let largs' := mapi_rec (fun i t => t.[up i inst_uparams]) largs pos_sub_cxt in
-        let insta_uparams' := todot "to update" in
-        (* let insta_uparams' := map (specialize_argument (pos_sub_cxt + #|largs|)) insta_uparams in *)
+        let insta_uparams'  := map (fun ' (llargs, arg) =>
+            let llargs' := mapi_rec (fun i t => t.[up i inst_uparams]) llargs (pos_sub_cxt + #|largs|) in
+            let arg' := specialize_argument (pos_sub_cxt + #|largs| + #|llargs|) arg in
+            (llargs', arg')
+            ) insta_uparams
+          in
         let inst_nuparams_indices' := map (fun t => t.[up (pos_sub_cxt + #|largs|) inst_uparams]) inst_nuparams_indices in
         arg_is_nested largs' ind u insta_uparams' inst_nuparams_indices'
     end.
