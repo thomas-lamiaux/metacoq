@@ -423,7 +423,6 @@ Section NestedToMutualInd.
     + apply pos_arg_is_free. apply ind_sp_uparams_notin_tProd => //.
       apply ind_sp_uparams_notin_mkApps => //.
       eapply ind_sp_uparams_notin_tLambda_eq; tea.
-      1: solve_length.
     + eapply pos_arg_is_sp_uparams => //.
       - cbn_length => //.
       - apply Alli_app_inv => //. eapply Alli_mapi. 2: eassumption.
@@ -508,47 +507,48 @@ Section NestedToMutualInd.
         arg_is_nested largs' ind u insta_uparams' inst_nuparams_indices'
     end.
 
-  Definition pos_specialize_argument pos_arg arg :
-    positive_argument nb_l_block l_uparams_b true (nb_l_nuparams + pos_arg) arg ->
-    positive_argument nb_m_block g_uparams_b true (nb_cxt_sub + nb_l_nuparams + pos_arg)
-      (specialize_argument (nb_l_nuparams + pos_arg) arg).
+  Definition pos_specialize_argument lax pos_sub_cxt arg :
+    positive_argument nb_l_block l_uparams_b lax pos_sub_cxt arg ->
+    positive_argument nb_m_block g_uparams_b lax (nb_cxt_sub + pos_sub_cxt)
+      (specialize_argument pos_sub_cxt arg).
   Proof.
-    intros H. induction H; cbn.
+    intro pos_arg; induction pos_arg using positive_argument_rect'; cbn.
     + apply pos_arg_is_free. apply inst_preserve_not_eq; only 1 : lia. assumption.
     + rewrite <- Nat.add_assoc.
       destruct (nth k inst_uparams_a err_arg) as [llargs arg_to_sub] eqn:H.
-      apply eq_prod in H as [Hfst Hsnd].
+      apply eq_prod in H as [Hfst Hsnd]. cbn_length.
       apply pos_sub_uparams. all: cbn_length.
-      - apply Alli_notin_eq => //. lia.
+      - apply Alli_notin_eq => //.
       - apply All_notin_eq => //. lia.
-      - rewrite - e0 -Hfst. symmetry.
+      - rewrite - fapp -Hfst. symmetry.
         apply (All2_nth (fun n x => n = #|x.1|)); only 1: solve_length.
         apply fapp_inst_uparams.
-      - eapply (Alli_map_gen_eq (n := nb_cxt_sub) (k := nb_l_nuparams + pos_arg + #|largs|)).
+      - eapply (Alli_map_gen_eq (n := nb_cxt_sub) (k := size_cxt + #|largs|)).
         * lia.
         * intros n x H. rewrite Nat.add_comm. unfold ind_sp_uparams_notin.
-          rewrite -shiftnP_add. rewrite -{1}(Nat.add_0_r (nb_l_nuparams + pos_arg + #|largs|)).
+          rewrite -shiftnP_add. rewrite -{1}(Nat.add_0_r (size_cxt + #|largs|)).
           apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn. exact H.
         * rewrite -Hfst. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
           apply positive_inst_llargs.
-      - unshelve eapply pos_lift_argument_eq0.
-        * exact (nb_cxt_sub + #|llargs|).
-        * lia.
-        (* the arguments we subtitute is positive ???*)
-        * rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
+      - eapply @pos_lift_argument_eq0 with (pos_arg := nb_cxt_sub + #|llargs|); only 1: lia.
+        (* the arguments we subtitute is lax => need to be finer here! ???*)
+        rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
           admit.
-    + apply pos_arg_is_ind.
-      - reflexivity.
+    + apply pos_arg_is_ind => //.
       - lia.
-      - apply Alli_notin_eq => //. lia.
+      - apply Alli_notin_eq => //.
       - apply All_app_inv; cbn_length.
         -- unfold tRels. apply All_rev_pointwise_map. cbn.
            intros. apply shiftnP_lt. lia.
-        -- apply All_notin_eq => //. solve_length.
+        -- apply All_notin_eq => //. lia.
     + apply pos_arg_is_nested with (mdecl := mdecl) => //.
-      - admit.
-      - admit.
-      - admit.
+      - apply Alli_notin_eq => //.
+      - induction Ppos_nested; constructor; only 2: apply IHPpos_nested.
+        destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
+        cbn_length; repeat split => //.
+        * apply Alli_notin_eq => //. lia.
+        * apply_eq p. lia.
+      - apply All_notin_eq => //. solve_length.
   Admitted.
 
 
@@ -590,8 +590,7 @@ Section NestedToMutualInd.
     + apply Alli_app_inv.
       - apply pos_cstr_new_args.
       - eapply Alli_mapi; only 2: exact pos_cstr_args.
-        intros. apply_eq (pos_specialize_argument i x) => //.
-        solve_length.
+        intros. cbn_length. apply_eq pos_specialize_argument => //. lia.
     (* pos indices *)
     + cbn_length. apply All_app_inv.
       - unfold tRels. apply All_rev_pointwise_map; cbn.

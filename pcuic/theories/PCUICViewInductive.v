@@ -616,8 +616,8 @@ Proof.
 Qed.
 
 
-Fixpoint subst_argument l above (t : argument) {struct t} : argument :=
-  match t with
+Fixpoint subst_argument l above (arg : argument) {struct arg} : argument :=
+  match arg with
   | arg_is_free t => arg_is_free (subst l above t)
   | arg_is_sp_uparam largs k args =>
       let largs' := mapi (fun i => subst l (above + i)) largs in
@@ -636,6 +636,24 @@ Fixpoint subst_argument l above (t : argument) {struct t} : argument :=
       let inst_nuparams_indices' := map (subst l (above + #|largs|)) inst_nuparams_indices in
       arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
   end.
+
+Definition pos_subst_argument l above arg nb_block up lax size_cxt :
+  All (ind_sp_uparams_notin up size_cxt) l ->
+  positive_argument nb_block up lax (size_cxt + #|l| + above) arg ->
+  positive_argument nb_block up lax (size_cxt + above) (subst_argument l above arg).
+Proof.
+Admitted.
+
+Definition pos_subst_argument_eq l above arg nb_block up lax size_cxt p q :
+  p = (size_cxt + #|l| + above) ->
+  q = (size_cxt + above) ->
+  All (ind_sp_uparams_notin up size_cxt) l ->
+  positive_argument nb_block up lax p arg ->
+  positive_argument nb_block up lax q (subst_argument l above arg).
+Proof.
+  intros -> ->; apply pos_subst_argument.
+Qed.
+
 
 
 End ViewInductive.
