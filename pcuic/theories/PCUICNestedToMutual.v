@@ -16,11 +16,11 @@ Import ViewInductive.
 
 [ ] 1. Specialize inductive block
     [X] 1.1 all but nested case
-    [ ] 1.2 nested case
+    [X] 1.2 nested case
     [ ] 1.3 indices
 [ ] 2. Proof positivity is preserved
     [X] 2.1 all but nested case
-    [ ] 2.2 nested case
+    [X] 2.2 nested case
     [ ] 2.3 indices
 [X] 3. Nested to Mutual
 [X] 4. Positivity is preserved
@@ -150,6 +150,15 @@ Section NestedToMutualInd.
     destruct x, y; cbn in *. destruct r as [ []]. assumption.
     apply IHa. assumption.
   Qed.
+
+  Definition positive_true_all :
+    All (fun x => positive_argument nb_g_block g_uparams_b true (nb_cxt_sub + #|x.1|) x.2) inst_uparams_a.
+  Proof.
+    induction spec_inst_uparams_a; constructor; cbn; eauto.
+    destruct x as [llargs arg], y as [cdecl pos], r as [[fapp ?] pos_arg]; cbn in *.
+    destruct pos => //. apply pos_false_to_true => //.
+  Qed.
+
 
   Definition inst_to_term : (list term * argument) -> term :=
     fun '(llargs, arg) => it_tLambda llargs (argument_to_term nb_g_block (nb_cxt_sub + #|llargs|) arg).
@@ -533,7 +542,9 @@ Section NestedToMutualInd.
       - eapply @pos_lift_argument_eq0 with (pos_arg := nb_cxt_sub + #|llargs|); only 1: lia.
         (* the arguments we subtitute is lax => need to be finer here! ???*)
         rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
-          admit.
+        destruct lax. 2: inversion e.
+        eapply All_impl; only 1: apply positive_true_all; cbn.
+        intros x H. apply pos_arg_inc => //.
     + apply pos_arg_is_ind => //.
       - lia.
       - apply Alli_notin_eq => //.
@@ -549,7 +560,7 @@ Section NestedToMutualInd.
         * apply Alli_notin_eq => //. lia.
         * apply_eq p. lia.
       - apply All_notin_eq => //. solve_length.
-  Admitted.
+  Qed.
 
 
   (* The instanciation of the uniform parameters is defined in the context:

@@ -432,11 +432,19 @@ Section PositiveIndBlock.
 
   Definition positive_argument_strict {size_cxt arg} :
     positive_argument false size_cxt arg ->
-    exists t, arg = arg_is_free t.
+    ∑ t, arg = arg_is_free t.
   Proof.
     intro k; inversion k.
     1: eauto.
     all : lia.
+  Qed.
+
+  Definition pos_false_to_true {size_cxt lax arg} :
+    positive_argument false size_cxt arg ->
+    positive_argument lax size_cxt arg.
+  Proof.
+    intros k; inversion k; only 2-4: lia.
+    apply pos_arg_is_free => //.
   Qed.
 
 
