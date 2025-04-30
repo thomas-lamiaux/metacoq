@@ -380,7 +380,7 @@ Section NestedToMutualInd.
 
   (* Substitute a strictly positive uniform parameter by its instantiation *)
   (* largs, args : already updated arg to sub [∀ largs, A_k args]
-     llargs, arg : already updated instantiation [λ llargs, arg]
+     llargs, arg : already updated instantiation [λ llargs, arg] wth largs in the context
   *)
   Definition sub_uparam (largs : list term) (args : list term) (llargs : list term) (arg : argument) : argument :=
     match arg with
@@ -393,8 +393,16 @@ Section NestedToMutualInd.
         let ll' := mapi (fun i => subst (rev args) i) ll in
         let i_upi' := map (subst (rev args) #|ll|) i_upi in
         arg_is_ind (largs ++ ll') pos_indb i_upi'
-    | arg_is_nested _ _ _ _ _ =>
-        todot "fix nested first"
+    | arg_is_nested ll ind u inst_up inst_else =>
+        let ll' := mapi (fun i => subst (rev args) i) ll in
+        let inst_up'  := map (fun ' (llargs, arg) =>
+            let llargs' := mapi (fun i => subst (rev args) (#|ll| + i)) llargs in
+            let arg' := subst_argument (rev args) (#|ll| + #|llargs|) arg in
+            (llargs', arg')
+            ) inst_up
+          in
+        let inst_else' := map (subst (rev args) #|ll|) inst_else in
+        arg_is_nested (largs ++ ll') ind u inst_up' inst_else'
     end.
 
   Definition pos_sub_uparams pos_sub_cxt largs args (lax : bool) (llargs : list term) (arg : argument)
@@ -405,7 +413,7 @@ Section NestedToMutualInd.
     (* WARNING: Check pos *)
     (fapp_arg : #|llargs| = #|args|)
     (pos_llargs : Alli (ind_sp_uparams_notin g_uparams_b) (nb_cxt_sub + pos_sub_cxt + #|largs|) llargs)
-    (pos_arg : positive_argument nb_m_block g_uparams_b lax (nb_cxt_sub + #|llargs| + pos_sub_cxt + #|largs|) arg)
+    (pos_arg : positive_argument nb_m_block g_uparams_b lax (nb_cxt_sub + pos_sub_cxt + #|largs| + #|llargs|) arg)
     :
     positive_argument nb_m_block g_uparams_b lax
       (nb_cxt_sub + pos_sub_cxt) (sub_uparam largs args llargs arg).
@@ -417,25 +425,33 @@ Section NestedToMutualInd.
       1: solve_length.
     + eapply pos_arg_is_sp_uparams => //.
       - cbn_length => //.
-      - apply Alli_app_inv => //. eapply Alli_mapi. 2: apply a.
+      - apply Alli_app_inv => //. eapply Alli_mapi. 2: eassumption.
         intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
         all: solve_length.
-      - cbn_length. eapply All_map. 2: apply a0. cbn.
+      - cbn_length. eapply All_map. 2: eassumption. cbn.
         intros x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
         all: solve_length.
     + apply pos_arg_is_ind => //; cbn_length.
+      - apply Alli_app_inv => //. eapply Alli_mapi. 2: eassumption.
+        intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
+        3: apply pos_args. 3: apply H.
+        all: solve_length.
+      - cbn_length. eapply All_map. 2: eassumption. cbn.
+        intros x H. eapply ind_sp_uparams_notin_subst_rev_eq.
+        3: apply pos_args. 3: apply H.
+        all: solve_length.
+    + apply pos_arg_is_nested with (mdecl := mdecl) => //; cbn_length.
       - apply Alli_app_inv => //. eapply Alli_mapi. 2: apply a.
         intros j x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
         all: solve_length.
-      - cbn_length. eapply All_map. 2: apply a0. cbn.
+      - admit.
+      - cbn_length. eapply All_map. 2: eassumption. cbn.
         intros x H. eapply ind_sp_uparams_notin_subst_rev_eq.
         3: apply pos_args. 3: apply H.
         all: solve_length.
-    + admit.
-      (* fix nested first *)
   Admitted.
 
   Definition err_arg : list term * argument
@@ -445,7 +461,7 @@ Section NestedToMutualInd.
   1. If it is a strpos uparams => substite by its instantiation
   2. Otherwise propagate the instantiation
 
-  pos sub_cxt : how deep after the sub_contxt
+  pos sub_cxt : how deep after the sub_contxt need for lift sub
   *)
   Definition specialize_argument (pos_sub_cxt : nat) (arg : argument) : argument :=
     match arg with

@@ -615,8 +615,30 @@ Proof.
   eapply pos_lift_argument; tea. lia.
 Qed.
 
-End ViewInductive.
 
+Fixpoint subst_argument l above (t : argument) {struct t} : argument :=
+  match t with
+  | arg_is_free t => arg_is_free (subst l above t)
+  | arg_is_sp_uparam largs k args =>
+      let largs' := mapi (fun i => subst l (above + i)) largs in
+      let args' := map (subst l (above + #|largs|)) args in
+      arg_is_sp_uparam largs' k args'
+  | arg_is_ind largs pos_indb inst_nuparams_indices =>
+      let largs' := mapi (fun i => subst l (above + i)) largs in
+      let inst_nuparams_indices' := map (subst l (above + #|largs|)) inst_nuparams_indices in
+      arg_is_ind largs' pos_indb inst_nuparams_indices'
+  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
+      let largs' := mapi (fun i => subst l (above + i)) largs in
+      let inst_uparams' := map
+        (fun '(llargs, arg) => ( mapi (fun i => subst l (above + #|largs| + i)) llargs,
+                                 subst_argument l (above + #|largs| + #|llargs|) arg))
+        inst_uparams in
+      let inst_nuparams_indices' := map (subst l (above + #|largs|)) inst_nuparams_indices in
+      arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
+  end.
+
+
+End ViewInductive.
 
 
 
