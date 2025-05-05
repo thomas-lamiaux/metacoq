@@ -82,7 +82,7 @@ Set Elimination Schemes.
 (* A constructor is of the form (∀ args, tRel (n - cstr_pos -1) up nup indices *)
 Record constructor_body := mkViewCtor {
   (** Constructor name, without the module path. *)
-    (* cstr_name : ident; ==>> does not matter for positivity *)
+    cstr_name : ident;
   (* which constructors it corresponds to *)
     (* cstr_pos : nat;  ==>> necessary ? *)
   (* list of arguments *)
@@ -100,7 +100,7 @@ Record constructor_body := mkViewCtor {
 (** Data associated to a single inductive in a mutual inductive block. *)
 Record one_inductive_body := mkViewInd {
   (** Name of the inductive, without the module path. *)
-    (* ind_name : ident; ===>> no link with positivity *)
+  ind_name : ident;
   (** Indices of the inductive, which can depend on the parameters :
       `ind_params |- ind_indices`. *)
   ind_indices : context;
@@ -685,8 +685,8 @@ Section ViewToEnv.
     mkApps (tRel rel_indb) (up_nup ++ indices).
 
   Definition view_to_env_constructor : ViewInductive.constructor_body -> PCUICEnvironment.constructor_body :=
-    fun ' (ViewInductive.mkViewCtor args indices) => {|
-      PCUICEnvironment.cstr_name := todo;
+    fun ' (ViewInductive.mkViewCtor name args indices) => {|
+      PCUICEnvironment.cstr_name := name;
       PCUICEnvironment.cstr_args := arguments_to_context (nb_uparams + nb_nuparams) args;
       PCUICEnvironment.cstr_indices := indices;
       PCUICEnvironment.cstr_type :=
@@ -700,8 +700,8 @@ Section ViewToEnv.
   Print PCUICEnvironment.mutual_inductive_body.
 
   Definition view_to_env_indb : ViewInductive.one_inductive_body -> PCUICEnvironment.one_inductive_body :=
-    fun ' (ViewInductive.mkViewInd indices s kelim ctors relev) => {|
-      PCUICEnvironment.ind_name := todo;
+    fun ' (ViewInductive.mkViewInd name indices s kelim ctors relev) => {|
+      PCUICEnvironment.ind_name := name;
       PCUICEnvironment.ind_indices := indices;
       PCUICEnvironment.ind_sort := s;
       PCUICEnvironment.ind_type := it_mkProd_or_LetIn (map fst uparams_b ++ nuparams ++ indices) (tSort s);

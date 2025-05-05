@@ -583,6 +583,7 @@ Section NestedToMutualInd.
 
   Definition specialize_ctor (ctor : constructor_body) : constructor_body :=
   {|
+    cstr_name     := todo;
     cstr_args    := cstr_new_args
                     ++ mapi (fun i => specialize_argument (nb_l_nuparams + i)) ctor.(cstr_args)  ;
     cstr_indices :=    tRels #|ctor.(cstr_args)| (#|g_args_a| + #|g_largs_t| + #|l_nuparams|)
@@ -611,6 +612,7 @@ Section NestedToMutualInd.
 
   Definition specialize_one_inductive_body (idecl : one_inductive_body) : one_inductive_body :=
   {|
+    ind_name      := todo;
     ind_indices   := new_indices idecl.(ind_indices);
     ind_sort      := todo;
     ind_kelim     := todo;
@@ -793,6 +795,7 @@ Section NestedToMutualIndb.
     constructor_body * list one_inductive_body :=
   let x := nested_to_mutual_argument ctor.(cstr_args) acc_indb in
   let new_ctor := {|
+    cstr_name    := ctor.(cstr_name);
     cstr_args    := x.1 ;
     cstr_indices := ctor.(cstr_indices)
     |} in
@@ -890,6 +893,7 @@ Section NestedToMutualIndb.
   Definition nested_to_mutual_one_indb indb acc_indb : one_inductive_body * list one_inductive_body :=
   let x := nested_to_mutual_ctor indb.(ind_ctors) acc_indb in
   let new_indb := {|
+    ind_name      := indb.(ind_name);
     ind_indices   := indb.(ind_indices);
     ind_sort      := indb.(ind_sort);
     ind_kelim     := todo; (* what to do here ? *)
