@@ -44,6 +44,8 @@ Module ViewInductive.
 (* An argument is either:
   - a term t that does not contain the ind nor the sp_uparams
   - of the form (∀ x1 ... xn, A / Ind i / tInd ...
+  - pos_indb is the position of the block
+  - k is the position of the uparam in the telescope
 *)
 Unset Elimination Schemes.
 
@@ -78,7 +80,7 @@ Qed.
 Set Elimination Schemes.
 
 (* A constructor is of the form (∀ args, tRel (n - cstr_pos -1) up nup indices *)
-Record constructor_body := {
+Record constructor_body := mkViewCtor {
   (** Constructor name, without the module path. *)
     (* cstr_name : ident; ==>> does not matter for positivity *)
   (* which constructors it corresponds to *)
@@ -96,7 +98,7 @@ Record constructor_body := {
 *)
 
 (** Data associated to a single inductive in a mutual inductive block. *)
-Record one_inductive_body := {
+Record one_inductive_body := mkViewInd {
   (** Name of the inductive, without the module path. *)
     (* ind_name : ident; ===>> no link with positivity *)
   (** Indices of the inductive, which can depend on the parameters :
@@ -120,7 +122,7 @@ Record one_inductive_body := {
 
 
 (** Data associated to a block of mutually inductive types. *)
-Record mutual_inductive_body := {
+Record mutual_inductive_body := mkViewMut {
   (** Whether the block is inductive, coinductive or non-recursive (Records). *)
   ind_finite : recursivity_kind;
   (** Context of uniform parameters + if they are strictly postive *)
@@ -141,34 +143,7 @@ Record mutual_inductive_body := {
 
 
 
-(* functions on arguments *)
-Definition argument_to_term (nb_block : nat) (pos_arg : nat) (arg : argument) : term :=
-  match arg with
-  | arg_is_free t => t
-  | arg_is_sp_uparam largs k args =>
-      it_tProd largs (mkApps (tRel k) args)
-  | arg_is_ind largs pos_indb inst_nuparams_indices =>
-      let rel_indb := pos_arg + #|largs| + (nb_block - pos_indb - 1) in
-      it_tProd largs (mkApps (tRel rel_indb) inst_nuparams_indices)
-  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-      let args := todo "to update" in
-      (* let args := map (argument_to_term nb_block (pos_arg + #|largs|)) inst_uparams
-                  ++ inst_nuparams_indices in *)
-      it_tProd largs (mkApps (tInd ind u) args)
-  end.
 
-Definition arguments_to_context (nb_block : nat) (pos_arg : nat) (args : list argument) : context :=
-rev (mapi (fun i t => vassAR (argument_to_term nb_block (i + pos_arg) t)) args).
-
-Definition ctor_to_type (pos_ctor : nat) (ctor : constant_body) : term :=
-  todo.
-
-Definition idecl_to_type : context -> one_inductive_body -> term :=
-  fun params idecl =>
-  it_mkLambda_or_LetIn (params ,,, idecl.(ind_indices)) (tSort idecl.(ind_sort)).
-
-
-Axiom (E : global_env).
 
 
 
@@ -179,6 +154,9 @@ Axiom (E : global_env).
 (* *** Strict Positivity *** *)
 
 Section PositiveIndBlock.
+
+  Axiom (E : global_env).
+
 
   Definition andP {A} (P Q : A -> bool) := fun a => P a && Q a.
   Notation "P &&p Q" := (andP P Q) (at level 50).
@@ -439,7 +417,7 @@ Section PositiveIndBlock.
     all : lia.
   Qed.
 
-  Definition pos_false_to_true {size_cxt lax arg} :
+  Definition pos_argument_from_false {size_cxt lax arg} :
     positive_argument false size_cxt arg ->
     positive_argument lax size_cxt arg.
   Proof.
@@ -664,10 +642,88 @@ Qed.
 
 
 
+
+
+
+
+
+(* *** View to Env *** *)
+
+Section ViewToEnv.
+  Context (nb_block : nat).
+  Context (uparams_b : list (context_decl * bool)).
+  Notation nb_uparams := #|uparams_b|.
+
+  (* size_cxt := param + nuparam + args already seen *)
+  Fixpoint argument_to_term (size_cxt : nat) (arg : argument) : term :=
+    match arg with
+    | arg_is_free t => t
+    | arg_is_sp_uparam largs pos_uparams args =>
+        let rel_uparams := (size_cxt - pos_uparams - 1) + #|largs| in
+        it_tProd largs (mkApps (tRel rel_uparams) args)
+    | arg_is_ind largs pos_indb inst_nuparams_indices =>
+        let rel_indb := size_cxt + (nb_block - pos_indb - 1) + #|largs|in
+        let up := tRels ((size_cxt - nb_uparams -1) + #|largs|) nb_uparams in
+        it_tProd largs (mkApps (tRel rel_indb) (up ++ inst_nuparams_indices))
+    | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
+        let term_uparams := map (fun ' (llargs, arg) =>
+            it_tLambda llargs (argument_to_term (size_cxt + #|largs| + #|llargs|) arg)
+          ) inst_uparams in
+        it_tProd largs (mkApps (tInd ind u) (term_uparams ++ inst_nuparams_indices))
+    end.
+
+  Definition arguments_to_context (size_cxt : nat) (args : list argument) : context :=
+    rev (mapi (fun i t => vassAR (argument_to_term (size_cxt + i) t)) args).
+
+  Context (nuparams : context).
+  Notation nb_nuparams := #|nuparams|.
+
+  (* size_cxt := param + nuparam + args *)
+  Definition return_type (size_cxt : nat) (indices : list term) : term :=
+    let rel_indb := size_cxt + (nb_block - size_cxt - 1) in
+    let up_nup := tRels (size_cxt - nb_uparams - nb_nuparams -1) (nb_uparams + nb_nuparams) in
+    mkApps (tRel rel_indb) (up_nup ++ indices).
+
+  Definition view_to_env_constructor : ViewInductive.constructor_body -> PCUICEnvironment.constructor_body :=
+    fun ' (ViewInductive.mkViewCtor args indices) => {|
+      PCUICEnvironment.cstr_name := todo;
+      PCUICEnvironment.cstr_args := arguments_to_context (nb_uparams + nb_nuparams) args;
+      PCUICEnvironment.cstr_indices := indices;
+      PCUICEnvironment.cstr_type :=
+        it_mkProd_or_LetIn (map fst uparams_b ++ nuparams ++
+          arguments_to_context (nb_uparams + nb_nuparams) args)
+          (return_type (nb_uparams + nb_nuparams + #|args|) indices)
+        ;
+      PCUICEnvironment.cstr_arity := #|args|
+    |}.
+
+  Print PCUICEnvironment.mutual_inductive_body.
+
+  Definition view_to_env_indb : ViewInductive.one_inductive_body -> PCUICEnvironment.one_inductive_body :=
+    fun ' (ViewInductive.mkViewInd indices s kelim ctors relev) => {|
+      PCUICEnvironment.ind_name := todo;
+      PCUICEnvironment.ind_indices := indices;
+      PCUICEnvironment.ind_sort := s;
+      PCUICEnvironment.ind_type := it_mkProd_or_LetIn (map fst uparams_b ++ nuparams ++ indices) (tSort s);
+      PCUICEnvironment.ind_kelim := kelim;
+      PCUICEnvironment.ind_ctors := map view_to_env_constructor ctors ;
+      PCUICEnvironment.ind_projs := todo;
+      PCUICEnvironment.ind_relevance := relev;
+    |}.
+
+  End ViewToEnv.
+
+  Definition view_to_env_mut : ViewInductive.mutual_inductive_body -> PCUICEnvironment.mutual_inductive_body :=
+    fun ' (ViewInductive.mkViewMut fin up nup indb u var) => {|
+      PCUICEnvironment.ind_finite := fin;
+      PCUICEnvironment.ind_npars := todo;
+      PCUICEnvironment.ind_params := todo;
+      PCUICEnvironment.ind_bodies := map (view_to_env_indb #|indb| up nup) indb ;
+      PCUICEnvironment.ind_universes := u;
+      PCUICEnvironment.ind_variance := var
+    |}.
+
 End ViewInductive.
-
-
-
 
 Definition mutual_to_view : PCUICEnvironment.mutual_inductive_body ->
                             ViewInductive.mutual_inductive_body :=
@@ -680,6 +736,7 @@ Admitted.
 Definition mutual_to_view_uparams mdecl :
   PCUICEnv_ind_uparams mdecl = ViewInductive.ind_uparams (mutual_to_view mdecl).
 Admitted.
+
 (*
 (* PCUIC.Env -> View *)
 Fixpoint inductive_to_view (mdecl : PCUICEnvironment.mutual_inductive_body)
@@ -702,7 +759,3 @@ Fixpoint inductive_to_view (mdecl : PCUICEnvironment.mutual_inductive_body)
   | pos_ass na arg B pos_arg pos_B => todo ""
   end.
 *)
-
-
-
-(* View -> PCUIC.Env *)

@@ -60,7 +60,7 @@ Section NestedToMutualInd.
     Notation nb_g_args := #|g_args_a|.
 
     Definition g_args : context :=
-      cxt_of_terms (map (argument_to_term nb_g_block #|g_params|) g_args_a).
+      arguments_to_context nb_g_block g_uparams_b nb_g_params g_args_a.
 
     Context (pos_g_args_a : Alli (positive_argument nb_g_block g_uparams_b true) nb_g_nuparams g_args_a).
 
@@ -156,12 +156,12 @@ Section NestedToMutualInd.
   Proof.
     induction spec_inst_uparams_a; constructor; cbn; eauto.
     destruct x as [llargs arg], y as [cdecl pos], r as [[fapp ?] pos_arg]; cbn in *.
-    destruct pos => //. apply pos_false_to_true => //.
+    destruct pos => //. apply pos_argument_from_false => //.
   Qed.
 
 
   Definition inst_to_term : (list term * argument) -> term :=
-    fun '(llargs, arg) => it_tLambda llargs (argument_to_term nb_g_block (nb_cxt_sub + #|llargs|) arg).
+    fun '(llargs, arg) => it_tLambda llargs (argument_to_term nb_g_block g_uparams_b (nb_cxt_sub + #|llargs|) arg).
 
   Definition pos_inst_to_term :
     All2 (fun ' (llargs, arg) ' (cdecl, pos) =>
@@ -542,7 +542,7 @@ Section NestedToMutualInd.
       - eapply @pos_lift_argument_eq0 with (pos_arg := nb_cxt_sub + #|llargs|); only 1: lia.
         (* the arguments we subtitute is lax => need to be finer here! ???*)
         rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams; lia.
-        destruct lax. 2: inversion e.
+        destruct lax; only 2: inversion e.
         eapply All_impl; only 1: apply positive_true_all; cbn.
         intros x H. apply pos_arg_inc => //.
     + apply pos_arg_is_ind => //.
