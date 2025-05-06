@@ -366,6 +366,8 @@ Section NestedToMutualInd.
     solve_length.
   Qed.
 
+  About All_fold_app_inv.
+
   Definition All_fold_app_inv : forall {A : Type} {P : list A -> A -> Type} (Γ Δ : list A),
     All_fold P Δ ->
     All_fold (fun Γ0 : list A => P (Γ0 ++ Δ)) Γ ->
@@ -746,7 +748,7 @@ Section NestedToMutualIndb.
   Qed.
 
   Definition spec_fl {X Y} (f : ((list X) * Y) -> X -> ((list X) * Y)) (xs : list X) (y : (list X) * Y)
-    PY PX
+    (PY : list X * Y -> Type) (PX : nat -> X -> Type)
     (pos_xs : Alli PX #|y.1| xs)
     (pos_y : PY y)
     (length_f : forall y x, #|(f y x).1| = S #|y.1|)
@@ -801,7 +803,15 @@ Section NestedToMutualIndb.
     (* new_spec *)
     PosAcc (nested_to_mutual_argument args acc_indb).
   Proof.
-  Admitted.
+    unfold nested_to_mutual_argument.
+    unfold PosAcc. cbn. generalize (@nil argument, acc_indb).
+    induction args as [| fa args IHargs].
+    - cbn. admit.
+    - cbn in *. intros p.
+      apply All_Forall.All_fold_app_inv in pos_args as [pos_fa pos_args].
+      apply IHargs.
+
+    Admitted.
     (* apply pos_left; cbn.
     - eapply Alli_shiftn_inv. rewrite Nat.add_comm => //.
     - split; [constructor | assumption].
