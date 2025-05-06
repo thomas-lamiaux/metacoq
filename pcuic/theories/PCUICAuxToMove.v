@@ -168,3 +168,127 @@ Proof.
   - apply_eq H; lia.
   - apply IHlength. intros. apply_eq H; lia.
 Qed.
+
+
+Inductive All_telescope {A : Type} (P : list A -> A -> Type)
+  : list A -> Type :=
+  | All_telescope_nil : All_telescope P []
+  | All_telescope_cons : forall (d : A) (Γ : list A),
+      All_telescope P Γ -> P Γ d -> All_telescope P (Γ ++ [d]).
+
+Definition All_telescope_singleton {A : Type} (P : list A -> A -> Type) a :
+  P [] a -> All_telescope P [a].
+Proof.
+  change [a] with ([] ++ [a]). repeat constructor => //.
+Qed.
+
+Definition All_telescope_app_inv {A P} {l l' : list A} :
+  All_telescope P l -> All_telescope (fun Γ => P (l ++ Γ)) l' -> All_telescope P (l ++ l').
+Proof.
+  intros x y. revert x. induction y.
+  - rewrite app_nil_r //.
+  - rewrite app_assoc. constructor; eauto.
+Qed.
+
+Definition All_telescope_impl {A : Type} {P Q : list A -> A -> Type} {l : list A} :
+  All_telescope P l -> (forall Γ x, P Γ x -> Q Γ x) -> All_telescope Q l.
+Proof.
+  intros x; induction x; constructor; eauto.
+Qed.
+
+Definition All_telescope_map {A B P Q} {f : A -> B} {l} :
+  (forall x Γ, Q Γ x -> P (map f Γ) (f x)) ->
+  All_telescope Q l -> All_telescope P (map f l).
+Proof.
+  intros Hf Hl.
+  induction Hl. constructor.
+  rewrite map_app; cbn.
+  apply All_telescope_app_inv => //.
+  apply All_telescope_singleton. rewrite app_nil_r.
+  apply Hf => //.
+Qed.
+
+Definition All_telescope_to_Alli {A} P (l : list A) n :
+  Alli P n l ->
+  All_telescope (fun Γ => P (n + #|Γ|)) l.
+Proof.
+  clear.
+  intros H. induction H; cbn. 1: constructor.
+  change (hd :: tl) with ([hd] ++ tl).
+  apply All_telescope_app_inv => //; cbn.
+  - apply All_telescope_singleton; cbn. cbn_length => //.
+  - eapply All_telescope_impl; tea; cbn. intros.
+    rewrite Nat.add_succ_r //.
+Qed.
+
+
+
+Inductive All_check {A : Type} (P : list bool -> A -> Type) check lb : list A -> Type :=
+| All_check_nil2 : All_check P check lb []
+| All_check_cons2 : forall (d : A) (Γ : list A),
+    P lb d -> All_check P check (lb ++ [check d]) Γ -> All_check P check lb (d :: Γ).
+
+Definition spec_fold_All_check {X Y} (check : X -> bool) (f : ((list X) * Y) -> X -> ((list X) * Y)) (xs : list X) (y : (list X) * Y)
+  (PY : list X * Y -> Type) (PX : list bool -> X -> Type)
+  (pos_xs : All_check PX check (map check y.1) xs)
+  (pos_y : PY y)
+  (length_f : forall y x, map check (f y x).1 = map check y.1 ++ [check x])
+  (pos_f : forall y hd, PY y -> PX (map check y.1) hd -> PY (f y hd))
+  :
+  PY (fold_left f xs y).
+Proof.
+  remember (map check y.1) as n.
+  revert y Heqn pos_y.
+  induction pos_xs; cbn. 1: easy.
+  intros y Heqn pos_y.
+  apply IHpos_xs.
+  - rewrite length_f Heqn //.
+  - apply pos_f => //. rewrite -Heqn => //.
+Qed.
+
+
+Definition All_check_app_inv {A P} check acc (l1 l2 : list A) :
+  All_check P check acc l1 ->
+  All_check P check (acc ++ map check l1) l2 ->
+  All_check P check acc (l1 ++ l2).
+Proof.
+  intros X; revert l2; induction X; cbn.
+  - rewrite app_nil_r. easy.
+  - intros l2 H. constructor => //. apply IHX.
+    rewrite -app_assoc //.
+Qed.
+
+Definition All_telescope_to_All_check {X} P check (l : list X):
+  All_telescope (fun Γ => P (map check Γ)) l ->
+  All_check P check [] l.
+Proof.
+  intros H. induction H. constructor.
+  apply All_check_app_inv => //.
+  cbn. repeat constructor. done.
+Qed.
+
+
+
+Definition spec_fold_Alli {X Y} (f : ((list X) * Y) -> X -> ((list X) * Y)) (xs : list X) (y : (list X) * Y)
+  (PY : list X * Y -> Type) (PX : nat -> X -> Type)
+  (pos_xs : Alli PX #|y.1| xs)
+  (pos_y : PY y)
+  (length_f : forall y x, #|(f y x).1| = S #|y.1|)
+  (pos_f : forall y hd, PY y -> PX #|y.1| hd -> PY (f y hd))
+  :
+  PY (fold_left f xs y).
+Proof.
+  remember (#|y.1|) as n.
+  revert y Heqn pos_y.
+  induction pos_xs; cbn. 1: easy.
+  intros y Heqn pos_y.
+  apply IHpos_xs.
+  - rewrite length_f. lia.
+  - apply pos_f => //. rewrite -Heqn => //.
+Qed.
+
+From Ltac2 Require Import Ltac2 Printf.
+
+Ltac2 nconstructor n :=
+  Control.extend (List.init n (fun i => fun _ => econstructor (Int.add 1 i)))
+  (fun _ => ()) [].

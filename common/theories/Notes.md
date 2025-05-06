@@ -1,24 +1,29 @@
 
-# Notes réu jeudi:
--> sub an arg => principle
--> pos => need the same number of var
--> nesting => condition sp uparams v.s. sp nuparams
+# Notes
+-> passer en context pour les arguments ???
+
+# Changes
+
+## PCUICViewInductive
+
+Concept:
+-> uparams explicit, could with nb but may as well
+-> split size_cxt => nb_nup + #|Γ| + nb_binders
+-> cstr => **All_fold ? (rev) !!!** (dep args)
+
+Practical:
+-> change lift arguments split Γ in 2
+-> relation pos_arg_notin fold and unfold
+
+## PCUICNestedToMutual
+
+Concept:
+-> no changes to function
+-> issue is lift_argugment ?
+-> Reason about All_fold ???
 
 
-# To do:
-1. finish specilisation + pos
-2. figure out isses indices
-3. wrapper function
-4. adapt regular pos + back and forth
-5. adapt metatheory with new regular pos
-
-# 2 files
-view_ind.v
-- view
-- positivty + on_inductive
-- back and forth regular def
-
-mutual_to_nested.v
-- translatation
-- preserves pos
-- preserves on ???
+Practical:
+-> Spe Arg:
+  -> lift arg case of spec_arg is **more** involved
+  -> need solve_length to link Γ to nΓ
