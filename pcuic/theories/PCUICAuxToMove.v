@@ -168,3 +168,9 @@ Proof.
   - apply_eq H; lia.
   - apply IHlength. intros. apply_eq H; lia.
 Qed.
+
+From Ltac2 Require Import Ltac2 Printf.
+
+Ltac2 nconstructor n :=
+  Control.extend (List.init n (fun i => fun _ => econstructor (Int.add 1 i)))
+  (fun _ => ()) [].
