@@ -169,6 +169,52 @@ Proof.
   - apply IHlength. intros. apply_eq H; lia.
 Qed.
 
+
+Inductive All_telescope {A : Type} (P : list A -> A -> Type)
+  : list A -> Type :=
+  | All_telescope_nil : All_telescope P []
+  | All_telescope_cons : forall (d : A) (Γ : list A),
+      All_telescope P Γ -> P Γ d -> All_telescope P (Γ ++ [d]).
+
+Definition All_telescope_singleton {A : Type} (P : list A -> A -> Type) a :
+  P [] a -> All_telescope P [a].
+Proof.
+  change [a] with ([] ++ [a]). repeat constructor => //.
+Qed.
+
+Definition All_telescope_app_inv {A P} {l l' : list A} :
+  All_telescope P l -> All_telescope (fun Γ => P (l ++ Γ)) l' -> All_telescope P (l ++ l').
+Proof.
+  intros x y. revert x. induction y.
+  - rewrite app_nil_r //.
+  - rewrite app_assoc. constructor; eauto.
+Qed.
+
+Definition All_telescope_impl {A : Type} {P Q : list A -> A -> Type} {l : list A} :
+  All_telescope P l -> (forall Γ x, P Γ x -> Q Γ x) -> All_telescope Q l.
+Proof.
+  intros x; induction x; constructor; eauto.
+Qed.
+
+
+Definition spec_fold_Alli {X Y} (f : ((list X) * Y) -> X -> ((list X) * Y)) (xs : list X) (y : (list X) * Y)
+  (PY : list X * Y -> Type) (PX : nat -> X -> Type)
+  (pos_xs : Alli PX #|y.1| xs)
+  (pos_y : PY y)
+  (length_f : forall y x, #|(f y x).1| = S #|y.1|)
+  (pos_f : forall y hd, PY y -> PX #|y.1| hd -> PY (f y hd))
+  :
+  PY (fold_left f xs y).
+Proof.
+  remember (#|y.1|) as n.
+  revert y Heqn pos_y.
+  induction pos_xs; cbn. 1: easy.
+  intros y Heqn pos_y.
+  apply IHpos_xs.
+  - rewrite length_f. lia.
+  - apply pos_f => //. rewrite -Heqn => //.
+Qed.
+
 From Ltac2 Require Import Ltac2 Printf.
 
 Ltac2 nconstructor n :=

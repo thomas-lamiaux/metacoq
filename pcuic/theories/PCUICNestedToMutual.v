@@ -56,7 +56,7 @@ Section NestedToMutualInd.
     Definition g_args : context :=
       arguments_to_context nb_g_block g_uparams_b (nb_g_uparams + nb_g_nuparams) g_Γargs.
 
-    Context (pos_g_Γargs : All_fold (fun Γargs => positive_argument nb_g_block g_uparams_b g_nuparams Γargs true 0) (List.rev g_Γargs)).
+    Context (pos_g_Γargs : All_telescope (fun Γargs => positive_argument nb_g_block g_uparams_b g_nuparams Γargs true 0) g_Γargs).
 
     (* Argument to the left of nesting  *)
     Context (g_largs_t : list term).
@@ -366,22 +366,13 @@ Section NestedToMutualInd.
     solve_length.
   Qed.
 
-  About All_fold_app_inv.
-
-  Definition All_fold_app_inv : forall {A : Type} {P : list A -> A -> Type} (Γ Δ : list A),
-    All_fold P Δ ->
-    All_fold (fun Γ0 : list A => P (Γ0 ++ Δ)) Γ ->
-    All_fold P (Γ ++ Δ).
-  Proof.
-    intros; eapply All_fold_app => //.
-  Qed.
 
   Definition pos_cstr_new_args :
-    All_fold (fun Γargs => positive_argument nb_m_block g_uparams_b g_nuparams Γargs true 0) (List.rev cstr_new_args).
+    All_telescope (fun Γargs => positive_argument nb_m_block g_uparams_b g_nuparams Γargs true 0) cstr_new_args.
   Proof.
-    eapply All_fold_impl; only 2: (intros ? ? X; apply pos_arg_inc; exact X).
-    unfold cstr_new_args; rewrite !rev_app_distr.
-    repeat apply All_fold_app_inv; cbn.
+    eapply All_telescope_impl; only 2: (intros ? ? X; apply pos_arg_inc; exact X).
+    unfold cstr_new_args.
+    repeat apply All_telescope_app_inv; cbn.
     - assumption.
     - admit.
     (* - eapply Alli_map ; only 1: apply pos_arg_is_free.
@@ -609,8 +600,8 @@ Section NestedToMutualInd.
     unfold positive_constructor, specialize_ctor. cbn [cstr_args cstr_indices].
     intros [pos_cstr_args pos_cstr_indices]. split.
     (* pos args *)
-    + rewrite rev_app_distr. apply All_fold_app_inv.
-      (* Print All_fold. *)
+    + apply All_telescope_app_inv.
+      (* Print All_X. *)
       - apply pos_cstr_new_args.
       - admit.
       (*
@@ -672,22 +663,10 @@ Section NestedToMutualIndb.
   Context (g_nuparams : context).
   Notation nb_g_nuparams := #|g_nuparams|.
 
-
-  (* Fold Arguments *)
+  (* function to be folded *)
   Definition Acc : Type := list argument * list one_inductive_body.
 
-  Definition PosArg Γargs (arg : argument) : Type :=
-    positive_argument nb_g_block g_uparams_b g_nuparams Γargs true 0 arg.
-
-  Definition PosAcc (acc : Acc) : Type :=
-      let nargs := acc.1 in let acc_indb := acc.2 in
-       All_fold (fun Γargs => positive_argument (nb_g_block + #|acc_indb|)
-                        g_uparams_b g_nuparams Γargs true 0) (List.rev nargs)
-    * (All (positive_one_inductive_body (nb_g_block + #|acc_indb|) g_uparams_b g_nuparams) acc_indb).
-
-  (* fold_function *)
-  Definition nested_to_mutual_one_argument (acc : Acc) (arg : argument) :
-      Acc :=
+  Definition nested_to_mutual_one_argument (acc : Acc) (arg : argument) : Acc :=
     let nargs := acc.1 in let acc_indb := acc.2 in
     match arg with
     | arg_is_nested largs (mkInd kname pos_indb) u inst_uparams inst_nuparams_indices =>
@@ -705,9 +684,57 @@ Section NestedToMutualIndb.
     | _ => (nargs ++ [arg], acc_indb)
     end.
 
+
+  (* Fold Arguments *)
+  Definition PosArg Γargs (arg : argument) : Type :=
+    positive_argument nb_g_block g_uparams_b g_nuparams Γargs true 0 arg.
+
+  Definition PosAcc (acc : Acc) : Type :=
+      let nargs := acc.1 in let acc_indb := acc.2 in
+        All_telescope (fun Γargs => positive_argument (nb_g_block + #|acc_indb|)
+                        g_uparams_b g_nuparams Γargs true 0) nargs
+    * (All (positive_one_inductive_body (nb_g_block + #|acc_indb|) g_uparams_b g_nuparams) acc_indb).
+
+  Inductive All_telescope_F {A Acc : Type} (P : Acc -> A -> Type) (F : Acc -> A -> Acc) acc
+  : list A -> Type :=
+  | All_telescopeF_nil : All_telescope_F P F acc []
+  | All_telescopeF_cons : forall (d : A) (Γ : list A),
+      P acc d -> All_telescope_F P F (F acc d) Γ -> All_telescope_F P F acc (d :: Γ).
+
+  Definition All_telescope_F_app_inv {A Acc P F} (acc : Acc) {l l' : list A} :
+    All_telescope_F P F acc l -> All_telescope_F P F (fold_left F l acc) l' -> All_telescope_F P F acc (l ++ l').
+  Proof.
+    intros x. induction x; cbn => //.
+    constructor; eauto.
+  Qed.
+
+  (* Definition All_telescope_impl {A : Type} {P Q : list A -> A -> Type} {l : list A} :
+    All_telescope P l -> (forall Γ x, P Γ x -> Q Γ x) -> All_telescope Q l.
+  Proof.
+    intros x; induction x; constructor; eauto.
+  Qed. *)
+
+
+  Definition spec_fold_telescope_F {A Acc} (F : Acc -> A -> Acc) (acc : Acc) (xs : list A)
+    (PAcc : Acc -> Type) (PA : Acc -> A -> Type)
+    (pos_xs : All_telescope_F PA F acc xs)
+    (pos_acc : PAcc acc)
+    (pos_f : forall acc hd, PAcc acc -> PA acc hd -> PAcc (F acc hd))
+    :
+    PAcc (fold_left F xs acc).
+  Proof.
+    remember acc as accT eqn: H.
+    revert acc H pos_acc.
+    induction pos_xs as []; cbn. 1: easy.
+    intros acc0 H pos_acc0.
+    eapply IHpos_xs.
+    2 : { apply pos_f => //. }
+    reflexivity.
+  Qed.
+
   Tactic Notation "solve_nested_to_mut" :=
-    split => //; rewrite rev_app_distr; apply All_fold_app_inv => //; repeat constructor => //;
-    cbn_length; cbn; cbn_length => //; rewrite -> ? Nat.add_0_r in * => //; lia.
+    split => //; apply All_telescope_app_inv => //; repeat constructor => //;
+    apply All_telescope_singleton; rewrite app_nil_r; constructor => //; lia.
 
   Definition pos_nested_to_mutual_one_argument (acc : Acc) arg :
     (* spec *)
@@ -724,9 +751,8 @@ Section NestedToMutualIndb.
     rewrite e0; cbn in *. cbn_length.
     pose proof (p := E_pos kname); rewrite e0 in p; cbn in p.
     destruct p as [pos_l_nuparams pos_l_indb]. split; cbn.
-    + rewrite rev_app_distr.
-      apply All_fold_app_inv; only 1: (eapply All_fold_impl; tea; intros; apply pos_arg_inc) => //.
-      repeat constructor; cbn_length; cbn ; cbn_length => //.
+    + apply All_telescope_app_inv. 1: (eapply All_telescope_impl; tea; intros; apply pos_arg_inc) => //.
+      apply All_telescope_singleton; rewrite app_nil_r. constructor; cbn_length => //.
       1: { rewrite -mutual_to_view_ind. lia. }
       apply All_app_inv => //.
       unfold tRels. apply All_rev_pointwise_map. cbn.
@@ -747,43 +773,6 @@ Section NestedToMutualIndb.
     all: cbn_length; cbn; try lia.
   Qed.
 
-  Definition spec_fl {X Y} (f : ((list X) * Y) -> X -> ((list X) * Y)) (xs : list X) (y : (list X) * Y)
-    (PY : list X * Y -> Type) (PX : nat -> X -> Type)
-    (pos_xs : Alli PX #|y.1| xs)
-    (pos_y : PY y)
-    (length_f : forall y x, #|(f y x).1| = S #|y.1|)
-    (pos_f : forall y hd, PY y -> PX #|y.1| hd -> PY (f y hd))
-    :
-    PY (fold_left f xs y).
-  Proof.
-    remember (#|y.1|) as n.
-    revert y Heqn pos_y.
-    induction pos_xs; cbn. 1: easy.
-    intros y Heqn pos_y.
-    apply IHpos_xs.
-    - rewrite length_f. lia.
-    - apply pos_f => //. rewrite -Heqn => //.
-  Qed.
-
-  (* fold *)
-  (* Definition pos_left acc args
-    (pos_arg : All_fold (PosArg acc.1) args)
-    (pos_acc : PosAcc acc)
-    :
-  PosAcc (fold_left nested_to_mutual_one_argument args acc).
-  Proof.
-    remember (#|acc.1|) as n.
-    revert acc Heqn pos_acc.
-    induction pos_arg; cbn. 1: easy.
-    intros acc Heqn posAcc.
-    apply IHpos_arg.
-    - destruct hd; cbn_length; cbn; try lia.
-      destruct ind. destruct (lookup_minductive E _) as [mdecl|]; cbn.
-      all: cbn_length; cbn; try lia.
-    - apply pos_nested_to_mutual_one_argument => //.
-      rewrite -Heqn => //.
-  Qed. *)
-
   Definition nested_to_mutual_argument args acc_indb :=
     fold_left nested_to_mutual_one_argument args ([],acc_indb).
 
@@ -798,24 +787,23 @@ Section NestedToMutualIndb.
   (* ccl fold *)
   Definition pos_nested_to_mutual_argument {args acc_indb}
     (* spec *)
-    (pos_args : All_fold (fun Γ => positive_argument nb_g_block g_uparams_b g_nuparams Γ true 0) (List.rev args))
+    (pos_args : All_telescope (fun Γ => positive_argument nb_g_block g_uparams_b g_nuparams Γ true 0) args)
     (pos_acc_indb : All (positive_one_inductive_body (nb_g_block + #|acc_indb|) g_uparams_b g_nuparams) acc_indb) :
     (* new_spec *)
     PosAcc (nested_to_mutual_argument args acc_indb).
   Proof.
     unfold nested_to_mutual_argument.
-    unfold PosAcc. cbn. generalize (@nil argument, acc_indb).
-    induction args as [| fa args IHargs].
-    - cbn. admit.
-    - cbn in *. intros p.
-      apply All_Forall.All_fold_app_inv in pos_args as [pos_fa pos_args].
-      apply IHargs.
-
+    eapply (@spec_fold_telescope_F _ _ _ _ _ _ (fun acc arg => positive_argument nb_g_block g_uparams_b g_nuparams acc.1 true 0 arg)); cbn.
+    all: set (P := (fun acc : list argument × list one_inductive_body => positive_argument nb_g_block g_uparams_b g_nuparams acc.1 true 0)).
+    - clear pos_acc_indb.
+      generalize (@nil argument, acc_indb).
+      induction pos_args. constructor.
+      intros acc. apply All_telescope_F_app_inv. apply IHpos_args.
+      repeat constructor. unfold P.
+      admit. (* STUCK *)
+    - repeat constructor; cbn => //.
+    - apply pos_nested_to_mutual_one_argument.
     Admitted.
-    (* apply pos_left; cbn.
-    - eapply Alli_shiftn_inv. rewrite Nat.add_comm => //.
-    - split; [constructor | assumption].
-  Qed. *)
 
 
   Definition nested_to_mutual_one_ctor ctor acc_indb :

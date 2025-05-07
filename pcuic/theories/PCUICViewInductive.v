@@ -434,7 +434,7 @@ Section PositiveIndBlock.
      2. The return indices do not contain the inductives nor the sp_uparams
   *)
   Definition positive_constructor (ctor : constructor_body) : Type :=
-      All_fold (fun Γargs arg => positive_argument Γargs true 0 arg) (List.rev ctor.(cstr_args))
+      All_telescope (fun Γargs arg => positive_argument Γargs true 0 arg) ctor.(cstr_args)
    * All (ind_sp_uparams_notin (#|nuparams| + #|ctor.(cstr_args)|)) ctor.(cstr_indices).
 
 
@@ -477,7 +477,7 @@ Fixpoint pos_ctor_inc {nb_block up nup ctor} k :
   positive_constructor (nb_block + k) up nup ctor.
 Proof.
   intros [pos_args pos_indices]; split => //.
-  eapply All_fold_impl; tea.
+  eapply All_telescope_impl; tea.
   intros; apply pos_arg_inc => //.
 Qed.
 
