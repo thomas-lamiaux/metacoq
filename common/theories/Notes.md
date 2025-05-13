@@ -1,6 +1,17 @@
+# Notes ajout condition
+
+-> Pbl nom dans le fichier => wrap in a module ???
+  => Section strengthening => "Prop are preserved"
+  => Section with the proofs
+
+-> how to deal with sub ok ?
+-> proof convoluted
+-> use forallb etc... to get a function easily
+
+-> All_map + impl rather than All_map
+
 
 # Notes
--> passer en context pour les arguments ???
 
 # Changes
 

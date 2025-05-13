@@ -4,14 +4,14 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.PCUIC Require Import PCUICAst.
 
 Definition map_rev [A B : Type] (f : A -> B) (l : list A) :
-  map f (rev l) = rev (map f l).
+  map f (List.rev l) = List.rev (map f l).
 Proof.
 Admitted.
 
 Check map_rev.
 
 Definition All_rev (A : Type) (P : A -> Type) (l : list A) :
-  All P l -> All P (rev l).
+  All P l -> All P (List.rev l).
 Proof.
 Admitted.
 
@@ -53,10 +53,10 @@ Definition vassAR : term -> context_decl :=
   fun t => vass (mkBindAnn nAnon Relevant) t.
 
 Definition cxt_of_terms : list term -> context :=
-  fun l => rev (map vassAR l).
+  fun l => List.rev (map vassAR l).
 
 Definition terms_of_cxt : context -> list term :=
-  fun Γ => map decl_type (rev Γ).
+  fun Γ => map decl_type (List.rev Γ).
 
 Definition it_binder binder : list term -> term -> term :=
   fun l t => fold_right (fun t u => binder (mkBindAnn nAnon Relevant) t u) t l.
@@ -68,7 +68,7 @@ Definition it_tLambda : list term -> term -> term :=
 fun l t => fold_right (fun t u => tLambda (mkBindAnn nAnon Relevant) t u) t l.
 
 Definition tRels (start length : nat) : list term :=
-  rev (map tRel (seq start length)).
+  List.rev (map tRel (seq start length)).
 
 Definition eq_prod {A B} (x : A * B) y z : x = (y,z) -> (fst x = y) * (snd x = z).
 Proof. destruct x; cbn. now intros [=]. Qed.
@@ -84,6 +84,13 @@ Proof.
   intros H p; induction p; constructor; eauto.
 Qed.
 
+Definition All_map2 {A B P Q1 Q2} {f : A -> B} {l} :
+  (forall x, Q1 x -> Q2 x -> P (f x)) ->
+  All Q1 l -> All Q2 l -> All P (map f l).
+Proof.
+  intros H p; induction p; intros q; inversion q; constructor; eauto.
+Qed.
+
 Definition All_pointwise_map {A P} {f : nat -> A} {start length} :
   (forall i, start <= i -> i < start + length -> P (f i)) ->
     All P (map f ((seq start length))).
@@ -95,11 +102,11 @@ Definition All_pointwise_map {A P} {f : nat -> A} {start length} :
 
 Definition All_rev_pointwise_map {A P} {f : nat -> A} {start length} :
 (forall i, start <= i -> i < start + length -> P (f i)) ->
-  All P (rev (map f ((seq start length)))).
+  All P (List.rev (map f ((seq start length)))).
 Proof.
   revert start; induction length; cbn [seq map]; intros start H.
   + constructor.
-  + rewrite rev_cons. apply All_app_inv.
+  + cbn. apply All_app_inv.
     - apply IHlength. intros. apply H; lia.
     - repeat constructor. apply H; lia.
 Qed.
@@ -110,7 +117,6 @@ Definition All_nth {A} P (l : list A) a k :
 Proof.
 Admitted.
 
-
 (* All2 *)
 Definition All2_nth {A B} P (lA : list A) (lB : list B) k a b :
   k < #|lA| ->
@@ -118,13 +124,46 @@ Definition All2_nth {A B} P (lA : list A) (lB : list B) k a b :
 Proof.
 Admitted.
 
+Fixpoint filter2 {A} (lb : list bool) (l : list A) : list A :=
+  match lb, l with
+  | [], [] => []
+  | true::lb, a::l => a :: filter2 lb l
+  | false::lb, a::l => filter2 lb l
+  | _, _ => []
+  end.
+
+Definition All_filter2 {A} (P : A -> Type) lb l :
+  All P l -> All P (filter2 lb l).
+Proof.
+  intros X; induction X in lb |- *; destruct lb as [|[] lb]; cbn;
+  try constructor => //; auto.
+Qed.
 
 (* Alli *)
-Definition Alli_map {A B P Q} {f : A -> B} {n l} :
-  (forall n x, Q n x -> P n (f x)) ->
-  Alli Q n l -> Alli P n (map f l).
+Definition Alli_map {A B P Q} {f : A -> B} {n m l} :
+  (forall i x, Q (i + n) x -> P (i + m) (f x)) ->
+  Alli Q n l -> Alli P m (map f l).
 Proof.
-  intros H p; induction p; constructor; eauto.
+  intros H p; induction p in m,H |-; constructor.
+  + apply H with (i := 0) => //.
+  + apply IHp. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
+Qed.
+
+Definition Alli_prod {A P1 P2 n} {l : list A} :
+  Alli P1 n l ->  Alli P2 n l -> Alli (fun i n => P1 i n * P2 i n) n l.
+Proof.
+  intros X; induction X; intros Y; inversion Y; constructor; eauto.
+Qed.
+
+Definition Alli_map2 {A B P Q1 Q2} {f : A -> B} {n m l} :
+  (forall i x, Q1 (i + n) x -> Q2 (i + n) x -> P (i + m) (f x)) ->
+  Alli Q1 n l -> Alli Q2 n l -> Alli P m (map f l).
+Proof.
+  intros H p1 p2. pose proof (Alli_prod p1 p2) as p12.
+  clear -H m p12.
+  induction p12 in m,H |-; constructor.
+  + apply H with (i := 0); destruct p => //.
+  + apply IHp12. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
 Qed.
 
 Definition Alli_map_gen {A B P Q} {f : A -> B} {n k l} :
@@ -142,22 +181,44 @@ Proof.
   intros -> H p; induction p; constructor; eauto.
 Qed.
 
-Definition Alli_mapi_rec {A B P Q} {f : nat -> A -> B} {k n m l} :
-(forall i x, Q (k + i) x -> P (n + i) (f (i + m) x)) ->
-Alli Q k l -> Alli P n (mapi_rec f l m).
+
+Definition Alli_mapi_rec {A B P Q} {f : nat -> A -> B} {n m k l} :
+  (forall i x, Q (i + n) x -> P (i + m) (f (i + k) x)) ->
+  Alli Q n l -> Alli P m (mapi_rec f l k).
 Proof.
-intros H x; revert m n H; induction x as [|k a l Qka]; cbn; constructor.
-- apply_eq (H 0); only 1 : lia. apply_eq Qka; only 1: lia.
-- apply IHx. intros. apply_eq (H (S i)); now rewrite Nat.add_succ_r.
+  intros H p.
+  induction p in m,k,H |-; constructor.
+  + apply H with (i := 0) => //.
+  + cbn. apply IHp. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
 Qed.
 
-Definition Alli_mapi {A B P Q} {f : nat -> A -> B} {k n l} :
-(forall i x, Q (k + i) x -> P (n + i) (f i x)) ->
-Alli Q k l -> Alli P n (mapi f l).
+Definition Alli_mapi {A B P Q} {f : nat -> A -> B} {n m l} :
+  (forall i x, Q (n + i) x -> P (m + i) (f i x)) ->
+  Alli Q n l -> Alli P m (mapi f l).
 Proof.
-unfold mapi. intros H X.
-eapply Alli_mapi_rec. 2: exact X.
-intros. rewrite Nat.add_0_r. now apply H.
+  unfold mapi. intros H X.
+  eapply Alli_mapi_rec. 2: exact X.
+  intros. rewrite Nat.add_0_r. rewrite Nat.add_comm. apply H. rewrite Nat.add_comm //.
+Qed.
+
+Definition Alli_mapi_rec2 {A B P Q1 Q2} {f : nat -> A -> B} {n1 n2 m k l} :
+  (forall i x, Q1 (i + n1) x -> Q2 (i + n2) x -> P (i + m) (f (i + k) x)) ->
+  Alli Q1 n1 l -> Alli Q2 n2 l -> Alli P m (mapi_rec f l k).
+Proof.
+  intros H p1.
+  induction p1 in n2,m,H,k |-; intros p2; inversion p2; constructor.
+  + apply H with (i := 0) => //.
+  + eapply IHp1; tea. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
+Qed.
+
+Definition Alli_mapi2 {A B P Q1 Q2} {f : nat -> A -> B} {n1 n2 m l} :
+  (forall i x, Q1 (n1 + i) x -> Q2 (n2 + i) x -> P (m + i) (f i x)) ->
+  Alli Q1 n1 l -> Alli Q2 n2 l -> Alli P m (mapi f l).
+Proof.
+  unfold mapi. intros H p1 p2.
+  unshelve eapply (Alli_mapi_rec2 _ p1 p2).
+  intros. rewrite Nat.add_0_r. rewrite Nat.add_comm. apply H.
+  all : rewrite Nat.add_comm //.
 Qed.
 
 Definition Alli_pointwise_mapi_rec {A P} {f : nat -> A} {n start length} :
@@ -221,6 +282,19 @@ Proof.
     rewrite Nat.add_succ_r //.
 Qed.
 
+(* All2 *)
+Definition All2_impl2 {A B : Type} {P Q1 Q2} l l':
+  All2 Q1 l l' -> All2 Q2 l l' ->
+  (forall (x : A) (y : B), Q1 x y -> Q2 x y -> P x y ) ->
+    All2 P l l'.
+Proof.
+Admitted.
+
+Definition All2_left_triv:
+  forall {A B : Type} {l : list A} {l' : list B} (P : A -> Type),
+  All P l -> #|l| = #|l'| -> All2 (fun x _ => P x) l l'.
+Proof.
+Admitted.
 
 
 Inductive All_check {A : Type} (P : list bool -> A -> Type) check lb : list A -> Type :=

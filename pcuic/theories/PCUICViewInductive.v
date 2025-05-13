@@ -82,7 +82,7 @@ Set Elimination Schemes.
 (* A constructor is of the form (∀ args, tRel (n - cstr_pos -1) up nup indices *)
 Record constructor_body := mkViewCtor {
   (** Constructor name, without the module path. *)
-    cstr_name : ident;
+  cstr_name : ident;
   (* which constructors it corresponds to *)
     (* cstr_pos : nat;  ==>> necessary ? *)
   (* list of arguments *)
@@ -183,10 +183,10 @@ Section PositiveIndBlock.
     on_free_vars (shiftnP pos_arg ind_notinP).
 
   Definition sp_uparams_notinP : nat -> bool :=
-    fun n => ~~ ((nth n (rev uparams_b) (todot "imp", false)).2).
+    fun n => ~~ ((nth n (List.rev uparams_b) (todot "imp", false)).2).
 
   (* Definition sp_uparams_notinP : nat -> bool :=
-  fun n => if nth_error (rev uparams_b) n is Some (_, b)
+  fun n => if nth_error (List.rev uparams_b) n is Some (_, b)
           then negb b else true. *)
 
   Definition sp_uparams_notin pos_arg : term -> bool :=
@@ -199,7 +199,7 @@ Section PositiveIndBlock.
     on_free_vars (shiftnP pos_arg ind_sp_uparams_notinP).
 
   Definition tRel_is_sp_uparams : nat -> bool :=
-  fun k => nth k (map snd (rev uparams_b)) false.
+  fun k => nth k (map snd (List.rev uparams_b)) false.
 
   Definition ind_sp_uparams_notin_below k i :
     i <? k -> ind_sp_uparams_notin k (tRel i).
@@ -298,9 +298,9 @@ Section PositiveIndBlock.
     (* it is a uparams *)
     k < #|uparams_b| ->
     (* which is positive *)
-    nth k (map snd (rev uparams_b)) false ->
+    nth k (map snd (List.rev uparams_b)) false ->
     (* and fully applied *)
-    nth k (rev uparams_nb_args) 0 = #|inst_args| ->
+    nth k (List.rev uparams_nb_args) 0 = #|inst_args| ->
     (* ind + sp_uparams ∉ largs *)
     Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs ->
     (* ind + sp_uparams ∉ args *)
@@ -336,7 +336,7 @@ Section PositiveIndBlock.
       * Alli (ind_sp_uparams_notin) (size_cxt + nb_binders + #|largs|) x.1
       (* args are pos lax or strict depending if you can nest or not *)
       * positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2
-    ) inst_uparams (rev (PCUICEnv_ind_uparams mdecl))
+    ) inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl))
     ->
     (* -------------------------------------------------------------- *)
     lax |> nb_binders |arg+> arg_is_nested largs (mkInd kname pos_ind) u
@@ -361,8 +361,8 @@ Section PositiveIndBlock.
     (P_arg_is_sp_uparams :
         forall lax nb_binders (largs : list term) (k : nat) (inst_args : list term)
         (e : lax = true) (pos_k : k < #|uparams_b|)
-        (is_sp : nth k (map snd (rev uparams_b)) false)
-        (fapp : nth k (rev uparams_nb_args) 0 = #|inst_args|)
+        (is_sp : nth k (map snd (List.rev uparams_b)) false)
+        (fapp : nth k (List.rev uparams_nb_args) 0 = #|inst_args|)
         (notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
         (notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_args),
         (* ------------------------ *)
@@ -391,7 +391,7 @@ Section PositiveIndBlock.
               (#|x.1| = cdecl_to_arity y.1
               × Alli (fun (pos_arg : nat) (x0 : term) => ind_sp_uparams_notin pos_arg x0) (size_cxt + nb_binders + #|largs|) x.1)
               * (positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2))
-            inst_uparams (rev (PCUICEnv_ind_uparams mdecl)))
+            inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl)))
         (Ppos_nested : All2_param1 (fun x y r => P r.2) pos_nested),
         (* ------------------------ *)
         P (pos_arg_is_nested lax nb_binders largs kname pos_ind u inst_uparams inst_nuparams_indices mdecl
@@ -449,7 +449,7 @@ Section PositiveIndBlock.
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
       All positive_constructor indb.(ind_ctors)
     (* To add to prevent inductive inductive *)
-    * Alli (sp_uparams_notin) #|nuparams| (map decl_type (rev indb.(ind_indices))).
+    * Alli (sp_uparams_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
 
 End PositiveIndBlock.
 
@@ -722,7 +722,7 @@ Section ViewToEnv.
     end.
 
   Definition arguments_to_context (size_cxt : nat) (args : list argument) : context :=
-    rev (mapi (fun i t => vassAR (argument_to_term (size_cxt + i) t)) args).
+    List.rev (mapi (fun i t => vassAR (argument_to_term (size_cxt + i) t)) args).
 
   Context (nuparams : context).
   Notation nb_nuparams := #|nuparams|.
