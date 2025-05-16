@@ -11,6 +11,11 @@
 -> All_map + impl rather than All_map
 
 
+Sec 2: Issues -> rec
+Sec 3: intuitive + solutions
+Sec 4: more technical
+Sec 5: more technical
+
 # Notes
 
 # Changes

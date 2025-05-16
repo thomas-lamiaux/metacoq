@@ -8,10 +8,13 @@ Definition map_rev [A B : Type] (f : A -> B) (l : list A) :
 Proof.
 Admitted.
 
-Check map_rev.
-
 Definition All_rev (A : Type) (P : A -> Type) (l : list A) :
   All P l -> All P (List.rev l).
+Proof.
+Admitted.
+
+Definition Alli_rev (A : Type) (P : nat -> A -> Type) n (l : list A) :
+  Alli (fun i => P (#|l| - i - 1)) n l -> Alli P n (List.rev l).
 Proof.
 Admitted.
 
@@ -77,18 +80,20 @@ Proof. destruct x; cbn. now intros [=]. Qed.
 (* Functions on All and variants *)
 
 (* All *)
-Definition All_map {A B P Q} {f : A -> B} {l} :
-  (forall x, Q x -> P (f x)) ->
-  All Q l -> All P (map f l).
+Definition All_sym_inv : forall {A B C : Type} (f : A -> C) (g : B -> C)
+  l l',
+  All2 (fun y x => f x = g y) l' l ->
+  All2 (fun x y => f x = g y) l  l'.
 Proof.
-  intros H p; induction p; constructor; eauto.
+  intros * X; induction X; constructor; eauto.
 Qed.
 
-Definition All_map2 {A B P Q1 Q2} {f : A -> B} {l} :
-  (forall x, Q1 x -> Q2 x -> P (f x)) ->
-  All Q1 l -> All Q2 l -> All P (map f l).
+Definition All_impl2 {A P Q1 Q2} {l : list A} :
+  All Q1 l -> All Q2 l ->
+  (forall x, Q1 x -> Q2 x -> P x) ->
+  All P l.
 Proof.
-  intros H p; induction p; intros q; inversion q; constructor; eauto.
+  intros H; induction H; intros q; inversion q; constructor; eauto.
 Qed.
 
 Definition All_pointwise_map {A P} {f : nat -> A} {start length} :
@@ -140,13 +145,16 @@ Proof.
 Qed.
 
 (* Alli *)
-Definition Alli_map {A B P Q} {f : A -> B} {n m l} :
-  (forall i x, Q (i + n) x -> P (i + m) (f x)) ->
-  Alli Q n l -> Alli P m (map f l).
+Definition Alli_impl {A : Type} {P Q : nat -> A -> Type} {l : list A} {n m : nat}:
+  Alli Q n l -> (forall i x, Q (n + i) x -> P (m + i) x) -> Alli P m l.
 Proof.
-  intros H p; induction p in m,H |-; constructor.
-  + apply H with (i := 0) => //.
-  + apply IHp. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
+Admitted.
+
+Definition Alli_map {A B P} {f : A -> B} {n l} :
+  Alli (fun i x => P i (f x)) n l ->
+  Alli P n (map f l).
+Proof.
+  intros H; induction H; constructor; eauto.
 Qed.
 
 Definition Alli_prod {A P1 P2 n} {l : list A} :
@@ -155,68 +163,63 @@ Proof.
   intros X; induction X; intros Y; inversion Y; constructor; eauto.
 Qed.
 
-Definition Alli_map2 {A B P Q1 Q2} {f : A -> B} {n m l} :
-  (forall i x, Q1 (i + n) x -> Q2 (i + n) x -> P (i + m) (f x)) ->
-  Alli Q1 n l -> Alli Q2 n l -> Alli P m (map f l).
+Definition Alli_map2 {A B P Q1 Q2} {f : A -> B} {n m k l} :
+  Alli Q1 n l -> Alli Q2 m l ->
+  (forall i x, Q1 (i + n) x -> Q2 (i + m) x -> P (i + k) (f x)) ->
+  Alli P m (map f l).
 Proof.
-  intros H p1 p2. pose proof (Alli_prod p1 p2) as p12.
-  clear -H m p12.
-  induction p12 in m,H |-; constructor.
-  + apply H with (i := 0); destruct p => //.
-  + apply IHp12. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
-Qed.
+Admitted.
 
-Definition Alli_map_gen {A B P Q} {f : A -> B} {n k l} :
-  (forall n x, Q n x -> P (n + k) (f x)) ->
-  Alli Q n l -> Alli P (n + k) (map f l).
+Definition Foo {A B P Q} {f : nat -> A -> B} {n m k l} :
+  Alli Q n l ->
+  (forall i x, Q (i + n) x -> P (i + m) (f (i + k) x)) ->
+   Alli P m (mapi_rec f l k).
 Proof.
-  intros H p; induction p; constructor; eauto.
+  intros X.
+  induction X in m,k |-; intros H; constructor.
+  + apply H with (i := 0) => //.
+  + cbn. apply IHX. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
 Qed.
-
-Definition Alli_map_gen_eq {A B P Q} {f : A -> B} {n k l m} :
-  m = n + k ->
-  (forall n x, Q n x -> P (n + k) (f x)) ->
-  Alli Q n l -> Alli P m (map f l).
-Proof.
-  intros -> H p; induction p; constructor; eauto.
-Qed.
-
 
 Definition Alli_mapi_rec {A B P Q} {f : nat -> A -> B} {n m k l} :
+  Alli Q n l ->
   (forall i x, Q (i + n) x -> P (i + m) (f (i + k) x)) ->
-  Alli Q n l -> Alli P m (mapi_rec f l k).
+  Alli P m (mapi_rec f l k).
 Proof.
-  intros H p.
-  induction p in m,k,H |-; constructor.
+  intros X.
+  induction X in m,k |-; intros H; constructor.
   + apply H with (i := 0) => //.
-  + cbn. apply IHp. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
+  + eapply IHX; tea. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
 Qed.
 
 Definition Alli_mapi {A B P Q} {f : nat -> A -> B} {n m l} :
+  Alli Q n l ->
   (forall i x, Q (n + i) x -> P (m + i) (f i x)) ->
-  Alli Q n l -> Alli P m (mapi f l).
+  Alli P m (mapi f l).
 Proof.
   unfold mapi. intros H X.
-  eapply Alli_mapi_rec. 2: exact X.
-  intros. rewrite Nat.add_0_r. rewrite Nat.add_comm. apply H. rewrite Nat.add_comm //.
+  eapply Alli_mapi_rec; tea.
+  intros. rewrite Nat.add_0_r. rewrite Nat.add_comm. apply X. rewrite Nat.add_comm //.
 Qed.
 
 Definition Alli_mapi_rec2 {A B P Q1 Q2} {f : nat -> A -> B} {n1 n2 m k l} :
+  Alli Q1 n1 l -> Alli Q2 n2 l ->
   (forall i x, Q1 (i + n1) x -> Q2 (i + n2) x -> P (i + m) (f (i + k) x)) ->
-  Alli Q1 n1 l -> Alli Q2 n2 l -> Alli P m (mapi_rec f l k).
+  Alli P m (mapi_rec f l k).
 Proof.
-  intros H p1.
-  induction p1 in n2,m,H,k |-; intros p2; inversion p2; constructor.
+  intros X.
+  induction X in n2,m,k |-; intros p2 H; inversion p2; constructor.
   + apply H with (i := 0) => //.
-  + eapply IHp1; tea. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
+  + eapply IHX; tea. intros i x; rewrite !Nat.add_succ_r. eapply H with (i := S i).
 Qed.
 
 Definition Alli_mapi2 {A B P Q1 Q2} {f : nat -> A -> B} {n1 n2 m l} :
+  Alli Q1 n1 l -> Alli Q2 n2 l ->
   (forall i x, Q1 (n1 + i) x -> Q2 (n2 + i) x -> P (m + i) (f i x)) ->
-  Alli Q1 n1 l -> Alli Q2 n2 l -> Alli P m (mapi f l).
+  Alli P m (mapi f l).
 Proof.
-  unfold mapi. intros H p1 p2.
-  unshelve eapply (Alli_mapi_rec2 _ p1 p2).
+  unfold mapi. intros p1 p2 H.
+  unshelve eapply (Alli_mapi_rec2 p1 p2).
   intros. rewrite Nat.add_0_r. rewrite Nat.add_comm. apply H.
   all : rewrite Nat.add_comm //.
 Qed.
@@ -311,8 +314,8 @@ Definition spec_fold_All_check {X Y} (check : X -> bool) (f : ((list X) * Y) -> 
   :
   PY (fold_left f xs y).
 Proof.
-  remember (map check y.1) as n.
-  revert y Heqn pos_y.
+  remember (map check y.1) as lb eqn:Heqlb.
+  revert y Heqlb pos_y.
   induction pos_xs; cbn. 1: easy.
   intros y Heqn pos_y.
   apply IHpos_xs.
@@ -342,6 +345,30 @@ Proof.
 Qed.
 
 
+(* list X * list X * y => old_args, new_args, data *)
+Definition spec_fold_All_check2 {X Y}
+  (* fct *)
+  (check : X -> bool)
+  (f : ( list X * list X * Y) -> X -> (list X * list X * Y))
+  (xs : list X) (acc : list X * list X * Y)
+  (* properties *)
+  (PAcc : list X * list X * Y -> Type) (PX : list bool -> X -> Type)
+  (pos_xs : All_check PX check (map check acc.1.1) xs)
+  (pos_acc : PAcc acc)
+  (inv_old : forall acc x, (f acc x).1.1 = acc.1.1 ++ [x])
+  (pos_f : forall acc hd, PAcc acc -> PX (map check acc.1.1) hd -> PAcc (f acc hd))
+  :
+  PAcc (fold_left f xs acc).
+Proof.
+  remember (map check acc.1.1) as n.
+  revert acc Heqn pos_acc.
+  induction pos_xs; cbn. 1: easy.
+  intros acc Heqn pos_acc.
+  apply IHpos_xs.
+  - rewrite inv_old map_app Heqn //.
+  - apply pos_f => //. rewrite -Heqn => //.
+Qed.
+
 
 Definition spec_fold_Alli {X Y} (f : ((list X) * Y) -> X -> ((list X) * Y)) (xs : list X) (y : (list X) * Y)
   (PY : list X * Y -> Type) (PX : nat -> X -> Type)
@@ -360,6 +387,30 @@ Proof.
   - rewrite length_f. lia.
   - apply pos_f => //. rewrite -Heqn => //.
 Qed.
+
+From MetaRocq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICOnFreeVars PCUICOnFreeVarsConv PCUICInstDef PCUICOnFreeVars.
+From MetaRocq.PCUIC Require Import PCUICSigmaCalculus PCUICInstConv.
+
+Definition on_free_vars_andb P Q t :
+  on_free_vars P t && on_free_vars Q t = on_free_vars (fun x => P x && Q x) t.
+Proof.
+Admitted.
+
+Definition on_free_vars_impl2 {q1 q2 p : nat -> bool} {t} :
+  (forall i, q1 i -> q2 i -> p i) ->
+  on_free_vars q1 t -> on_free_vars q2 t ->  on_free_vars p t.
+Proof.
+  intros H Hq1 Hq2. eapply on_free_vars_impl with (p := fun i => q1 i && q2 i).
+  1: { intros i [? ?]%andb_prop. apply H => //. }
+  rewrite -on_free_vars_andb. apply andb_true_intro. by constructor.
+Qed.
+
+Definition shiftnP_impl_fct (p q : nat -> bool) f g:
+  (forall i : nat, p (f i) -> q (g i)) ->
+  forall n i : nat, shiftnP n p (f i) -> shiftnP n q (g i).
+Proof.
+Admitted.
+
 
 From Ltac2 Require Import Ltac2 Printf.
 

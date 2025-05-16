@@ -410,9 +410,9 @@ Section PositiveIndBlock.
       apply rec. apply IHpos_nested.
   Defined.
 
-  Definition positive_argument_strict {size_cxt arg} :
-    positive_argument false size_cxt arg ->
-    ∑ t, arg = arg_is_free t.
+  Definition positive_argument_strict {nb_binders arg} :
+    positive_argument false nb_binders arg ->
+    ∑ t, ((ind_sp_uparams_notin (size_cxt + nb_binders) t) * (arg = arg_is_free t)).
   Proof.
     intro k; inversion k.
     1: eauto.
@@ -449,7 +449,7 @@ Section PositiveIndBlock.
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
       All positive_constructor indb.(ind_ctors)
     (* To add to prevent inductive inductive *)
-    * Alli (sp_uparams_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
+    * Alli (ind_sp_uparams_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
 
 End PositiveIndBlock.
 
@@ -459,6 +459,7 @@ Definition positive_mutual_inductive_body (mdecl : mutual_inductive_body) : Type
         mdecl.(ind_nuparams)) mdecl.(ind_bodies).
 
 
+Arguments positive_argument_strict {_ _ _ _ _ _}.
 
 (* Increasing the number of inductive block preserve positivity *)
 Definition pos_arg_inc {nb_block up nup Γargs lax nb_binders arg} k :
@@ -566,28 +567,29 @@ Proof.
     - apply_eq pos_arg. lia.
 Qed.
 
-
-(* Lifting an argument preserves positivity *)
-Fixpoint lift_argument n above (t : argument) {struct t} : argument :=
-  match t with
-  | arg_is_free t => arg_is_free (lift n above t)
+Fixpoint argument_mapi (f : nat -> term -> term) above arg : argument :=
+  match arg with
+  | arg_is_free t => arg_is_free (f above t)
   | arg_is_sp_uparam largs k inst_args =>
-      let largs' := mapi (fun i => lift n (above + i)) largs in
-      let inst_args' := map (lift n (above + #|largs|)) inst_args in
+      let largs' := mapi (fun i => f (above + i)) largs in
+      let inst_args' := map (f (above + #|largs|)) inst_args in
       arg_is_sp_uparam largs' k inst_args'
   | arg_is_ind largs pos_indb inst_nuparams_indices =>
-      let largs' := mapi (fun i => lift n (above + i)) largs in
-      let inst_nuparams_indices' := map (lift n (above + #|largs|)) inst_nuparams_indices in
+      let largs' := mapi (fun i => f (above + i)) largs in
+      let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
       arg_is_ind largs' pos_indb inst_nuparams_indices'
   | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-      let largs' := mapi (fun i => lift n (above + i)) largs in
-      let inst_uparams' := map
-        (fun '(llargs, arg) => ( mapi (fun i => lift n (above + #|largs| + i)) llargs,
-                                 lift_argument n (above + #|largs| + #|llargs|) arg))
+      let largs' := mapi (fun i => f (above + i)) largs in
+      let inst_uparams' := map (fun '(llargs, arg) =>
+        ( mapi (fun i => f (above + #|largs| + i)) llargs,
+          argument_mapi f (above + #|largs| + #|llargs|) arg))
         inst_uparams in
-      let inst_nuparams_indices' := map (lift n (above + #|largs|)) inst_nuparams_indices in
+      let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
       arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
   end.
+
+(* Lifting an argument preserves positivity *)
+Definition lift_argument n := argument_mapi (lift n).
 
 Definition on_free_vars_lift (p : nat -> bool) (c n k : nat)
   (t : term) (ft : on_free_vars (shiftnP (c + k) p) t) :
@@ -596,13 +598,6 @@ Proof.
   rewrite -Nat.add_assoc Nat.add_comm -shiftnP_add.
   apply on_free_vars_lift_impl.
   rewrite shiftnP_add Nat.add_comm => //.
-Qed.
-
-Definition on_free_vars_lift' (p : nat -> bool) (c n k : nat)
-  (t : term) (ft : on_free_vars (shiftnP (c + k) p) t) :
-  on_free_vars (shiftnP (c + (n + k)) p) (lift n k t).
-Proof.
-  rewrite Nat.add_assoc. apply on_free_vars_lift => //.
 Qed.
 
 Definition on_free_vars_lift_eq (p : nat -> bool) (a b c n k : nat)
@@ -614,11 +609,11 @@ Proof.
 Qed.
 
 Tactic Notation "solve_Alli" :=
-  eapply Alli_mapi; only 2 :tea; intros i t;
+  eapply Alli_mapi; only 1 : tea; intros i t;
   eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
 
 Tactic Notation "solve_All" :=
-  eapply All_map ; only 2: tea ; cbn; cbn_length; intros t;
+  eapply All_map, All_impl; only 1: tea ; cbn; cbn_length; intros t;
   eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
 
 Definition pos_lift_argument {nb_block up nup Γargs1 Γargs2 lax nb_binders} arg p n k :
@@ -630,12 +625,14 @@ Proof.
   induction pos_arg using positive_argument_rect'; intros k0 ->.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea; try solve [solve_Alli | solve_All].
   + eapply on_free_vars_lift_eq; tea; cbn_length; reflexivity || lia.
-  + fold lift_argument.
+  + fold argument_mapi.
+    change (argument_mapi (lift (#|Γargs2| + n)))
+    with (lift_argument (#|Γargs2| + n)).
     induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
             [[fapp pos_llargs] pos_inst] pos_arg RL IHRL ?]; constructor; eauto.
     cbn in *; cbn_length; repeat split => //.
     - solve_Alli.
-    - apply_eq pos_arg. all:lia.
+    - apply_eq pos_arg. all: lia.
 Qed.
 
 Definition pos_lift_argument_eq {nb_block up nup Γargs1 Γargs2 lax nb_binders} arg p Γ q r n k :
@@ -650,26 +647,7 @@ Proof.
 Qed.
 
 
-Fixpoint subst_argument l above (arg : argument) {struct arg} : argument :=
-  match arg with
-  | arg_is_free t => arg_is_free (subst l above t)
-  | arg_is_sp_uparam largs k args =>
-      let largs' := mapi (fun i => subst l (above + i)) largs in
-      let args' := map (subst l (above + #|largs|)) args in
-      arg_is_sp_uparam largs' k args'
-  | arg_is_ind largs pos_indb inst_nuparams_indices =>
-      let largs' := mapi (fun i => subst l (above + i)) largs in
-      let inst_nuparams_indices' := map (subst l (above + #|largs|)) inst_nuparams_indices in
-      arg_is_ind largs' pos_indb inst_nuparams_indices'
-  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-      let largs' := mapi (fun i => subst l (above + i)) largs in
-      let inst_uparams' := map
-        (fun '(llargs, arg) => ( mapi (fun i => subst l (above + #|largs| + i)) llargs,
-                                 subst_argument l (above + #|largs| + #|llargs|) arg))
-        inst_uparams in
-      let inst_nuparams_indices' := map (subst l (above + #|largs|)) inst_nuparams_indices in
-      arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
-  end.
+Definition subst_argument l := argument_mapi (subst l).
 
 Definition pos_subst_argument {nb_block up nup Γargs lax nb_binders} sub above arg  :
   All (ind_sp_uparams_notin up ((#|nup| + #|Γargs|) + nb_binders)) sub ->
@@ -689,10 +667,51 @@ Proof.
   intros -> -> ->; apply pos_subst_argument.
 Qed.
 
+Definition rename_argument f : nat -> argument -> argument :=
+  argument_mapi (fun i => rename (shiftn i f)).
 
+Fixpoint argument_measure arg : nat :=
+  match arg with
+  | arg_is_free t => 0
+  | arg_is_sp_uparam largs k inst_args => 0
+  | arg_is_ind largs pos_indb inst_nuparams_indices => 0
+  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
+      1 + fold_right max 0 (map (fun x => argument_measure x.2) inst_uparams)
+  end.
 
+(* From Equations Require Import Equations.
 
+Equations? argument_predi (P : nat -> term -> Type) above arg : Type by wf (argument_measure arg) lt :=
+argument_predi P above (arg_is_free t) := P above t;
+argument_predi P above (arg_is_sp_uparam largs k inst_args) :=
+        Alli P above largs * All (P (above + #|largs|)) inst_args;
+argument_predi P above (arg_is_ind largs pos_indb inst_nuparams_indices) :=
+        Alli P above largs * All (P (above + #|largs|)) inst_nuparams_indices;
+argument_predi P above (arg_is_nested largs ind u inst_uparams inst_nuparams_indices) :=
+        Alli P above largs
+      * All (fun x => Alli P (above + #|largs|) x.1
+        * argument_predi P (above + #|largs| + #|x.1|) x.2) inst_uparams
+      * All (P (above + #|largs|)) inst_nuparams_indices.
+Proof.
+Admitted. *)
 
+(* Fixpoint argument_predi (P : nat -> term -> Type) above arg {struct arg} : Type :=
+  match arg with
+  | arg_is_free t => P above t
+  | arg_is_sp_uparam largs k inst_args =>
+        Alli P above largs
+      * All (P (above + #|largs|)) inst_args
+  | arg_is_ind largs pos_indb inst_nuparams_indices =>
+        Alli P above largs
+      * All (P (above + #|largs|)) inst_nuparams_indices
+  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
+        Alli P above largs
+      * All (fun x =>
+          Alli P (above + #|largs|) x.1
+        * argument_predi P (above + #|largs| + #|x.1|) x.2)
+          inst_uparams
+      * All (P (above + #|largs|)) inst_nuparams_indices
+  end. *)
 
 
 
@@ -746,7 +765,7 @@ Section ViewToEnv.
       PCUICEnvironment.cstr_arity := #|args|
     |}.
 
-  Print PCUICEnvironment.mutual_inductive_body.
+  (* Print PCUICEnvironment.mutual_inductive_body. *)
 
   Definition view_to_env_indb : ViewInductive.one_inductive_body -> PCUICEnvironment.one_inductive_body :=
     fun ' (ViewInductive.mkViewInd name indices s kelim ctors relev) => {|
