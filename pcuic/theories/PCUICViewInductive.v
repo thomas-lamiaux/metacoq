@@ -419,15 +419,21 @@ Section PositiveIndBlock.
     all : lia.
   Qed.
 
-  Definition pos_argument_from_false {size_cxt lax arg} :
-    positive_argument false size_cxt arg ->
-    positive_argument lax size_cxt arg.
+  End PosArg.
+
+  Definition positive_argument_increase1 {l b nb_binders arg} :
+    positive_argument (repeat false #|l|) b nb_binders arg ->
+    positive_argument l b nb_binders arg.
+  Proof.
+  Admitted.
+
+  Definition positive_argument_increase2 {l b nb_binders arg} :
+    positive_argument l false nb_binders arg ->
+    positive_argument l b nb_binders arg.
   Proof.
     intros k; inversion k; only 2-4: lia.
     apply pos_arg_is_free => //.
   Qed.
-
-  End PosArg.
 
   Definition check_lax : argument -> bool :=
     fun arg => if arg is arg_is_free _ then false else true.
@@ -587,6 +593,12 @@ Fixpoint argument_mapi (f : nat -> term -> term) above arg : argument :=
       let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
       arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
   end.
+
+Definition argument_mapi_check_lax f above arg :
+  check_lax (argument_mapi f above arg) = check_lax arg.
+Proof.
+  destruct arg => //.
+Qed.
 
 (* Lifting an argument preserves positivity *)
 Definition lift_argument n := argument_mapi (lift n).
