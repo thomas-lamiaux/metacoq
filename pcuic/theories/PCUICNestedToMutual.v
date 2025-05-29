@@ -85,9 +85,6 @@ Qed. *)
 Proof.
 Admitted. *)
 
-Axiom (on_free_vars_argument : (nat -> bool) -> argument -> bool).
-Axiom (on_free_vars_argument_free1 : forall P t, on_free_vars_argument P (arg_is_free t) = on_free_vars P t).
-
 Definition unlift_lift p k t :
   on_free_vars (shiftnP k (fun i => ~~ (i <? p))) t ->
   t = lift p k (unlift p k t).

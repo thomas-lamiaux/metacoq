@@ -142,6 +142,51 @@ Record mutual_inductive_body := mkViewMut {
   (* ind_params : context; => split in ind_uparams and ind_nuparams *)
 
 
+Definition check_lax : argument -> bool :=
+  fun arg => if arg is arg_is_free _ then false else true.
+
+Definition strict_to_term arg (Hlax : check_lax arg = false) : term.
+  destruct arg; only 2-4: inversion Hlax.
+  exact t.
+Defined.
+
+Fixpoint argument_mapi (f : nat -> term -> term) above arg : argument :=
+  match arg with
+  | arg_is_free t => arg_is_free (f above t)
+  | arg_is_sp_uparam largs k inst_args =>
+      let largs' := mapi (fun i => f (above + i)) largs in
+      let inst_args' := map (f (above + #|largs|)) inst_args in
+      arg_is_sp_uparam largs' k inst_args'
+  | arg_is_ind largs pos_indb inst_nuparams_indices =>
+      let largs' := mapi (fun i => f (above + i)) largs in
+      let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
+      arg_is_ind largs' pos_indb inst_nuparams_indices'
+  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
+      let largs' := mapi (fun i => f (above + i)) largs in
+      let inst_uparams' := map (fun '(llargs, arg) =>
+        ( mapi (fun i => f (above + #|largs| + i)) llargs,
+          argument_mapi f (above + #|largs| + #|llargs|) arg))
+        inst_uparams in
+      let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
+      arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
+  end.
+
+Definition argument_mapi_check_lax f above arg :
+  check_lax (argument_mapi f above arg) = check_lax arg.
+Proof.
+  destruct arg => //.
+Qed.
+
+Definition lift_argument n := argument_mapi (lift n).
+Definition subst_argument l := argument_mapi (subst l).
+Definition rename_argument f : nat -> argument -> argument :=
+  argument_mapi (fun i => rename (shiftn i f)).
+
+
+
+
+Axiom (on_free_vars_argument : (nat -> bool) -> argument -> bool).
+Axiom (on_free_vars_argument_free1 : forall P t, on_free_vars_argument P (arg_is_free t) = on_free_vars P t).
 
 
 
@@ -435,15 +480,19 @@ Section PositiveIndBlock.
     apply pos_arg_is_free => //.
   Qed.
 
-  Definition check_lax : argument -> bool :=
-    fun arg => if arg is arg_is_free _ then false else true.
+
 
   (* A constructor is postive when:
      1. All of its arguments are positive
      2. The return indices do not contain the inductives nor the sp_uparams
   *)
   Definition positive_constructor (ctor : constructor_body) : Type :=
-      All_telescope (fun Γargs arg => positive_argument (map check_lax Γargs) true 0 arg) ctor.(cstr_args)
+      All_telescope (fun Γargs arg =>
+        (* rec call not in the arg *)
+        (* is_true (on_free_vars_argument (notin_of_rev_list (map check_lax Γ)) arg) * *)
+        (* arg is positive *)
+        positive_argument (map check_lax Γargs) true 0 arg)
+      ctor.(cstr_args)
    * All (ind_sp_uparams_notin (#|nuparams| + #|ctor.(cstr_args)|)) ctor.(cstr_indices).
 
 
@@ -454,7 +503,7 @@ Section PositiveIndBlock.
   *)
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
       All positive_constructor indb.(ind_ctors)
-    (* To add to prevent inductive inductive *)
+    (* To add to prevent inductive-inductive types *)
     * Alli (ind_sp_uparams_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
 
 End PositiveIndBlock.
@@ -573,36 +622,6 @@ Proof.
     - apply_eq pos_arg. lia.
 Qed.
 
-Fixpoint argument_mapi (f : nat -> term -> term) above arg : argument :=
-  match arg with
-  | arg_is_free t => arg_is_free (f above t)
-  | arg_is_sp_uparam largs k inst_args =>
-      let largs' := mapi (fun i => f (above + i)) largs in
-      let inst_args' := map (f (above + #|largs|)) inst_args in
-      arg_is_sp_uparam largs' k inst_args'
-  | arg_is_ind largs pos_indb inst_nuparams_indices =>
-      let largs' := mapi (fun i => f (above + i)) largs in
-      let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
-      arg_is_ind largs' pos_indb inst_nuparams_indices'
-  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-      let largs' := mapi (fun i => f (above + i)) largs in
-      let inst_uparams' := map (fun '(llargs, arg) =>
-        ( mapi (fun i => f (above + #|largs| + i)) llargs,
-          argument_mapi f (above + #|largs| + #|llargs|) arg))
-        inst_uparams in
-      let inst_nuparams_indices' := map (f (above + #|largs|)) inst_nuparams_indices in
-      arg_is_nested largs' ind u inst_uparams' inst_nuparams_indices'
-  end.
-
-Definition argument_mapi_check_lax f above arg :
-  check_lax (argument_mapi f above arg) = check_lax arg.
-Proof.
-  destruct arg => //.
-Qed.
-
-(* Lifting an argument preserves positivity *)
-Definition lift_argument n := argument_mapi (lift n).
-
 Definition on_free_vars_lift (p : nat -> bool) (c n k : nat)
   (t : term) (ft : on_free_vars (shiftnP (c + k) p) t) :
   on_free_vars (shiftnP (c + n + k) p) (lift n k t).
@@ -658,9 +677,6 @@ Proof.
   intros ? -> -> -> X. eapply pos_lift_argument; tea.
 Qed.
 
-
-Definition subst_argument l := argument_mapi (subst l).
-
 Definition pos_subst_argument {nb_block up nup Γargs lax nb_binders} sub above arg  :
   All (ind_sp_uparams_notin up ((#|nup| + #|Γargs|) + nb_binders)) sub ->
   positive_argument nb_block up nup Γargs lax (nb_binders + #|sub| + above) arg ->
@@ -679,17 +695,14 @@ Proof.
   intros -> -> ->; apply pos_subst_argument.
 Qed.
 
-Definition rename_argument f : nat -> argument -> argument :=
-  argument_mapi (fun i => rename (shiftn i f)).
-
-Fixpoint argument_measure arg : nat :=
+(* Fixpoint argument_measure arg : nat :=
   match arg with
   | arg_is_free t => 0
   | arg_is_sp_uparam largs k inst_args => 0
   | arg_is_ind largs pos_indb inst_nuparams_indices => 0
   | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
       1 + fold_right max 0 (map (fun x => argument_measure x.2) inst_uparams)
-  end.
+  end. *)
 
 (* From Equations Require Import Equations.
 

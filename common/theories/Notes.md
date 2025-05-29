@@ -1,3 +1,8 @@
+# 3 approahces
+-> projection (dep)
+-> inst_to_terms + eq (no dep)
+-> fct + eq (no dep)
+
 # Notes ajout condition
 
 -> Pbl nom dans le fichier => wrap in a module ???
