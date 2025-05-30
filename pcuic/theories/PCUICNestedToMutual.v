@@ -14,17 +14,18 @@ Import ViewInductive.
 
 (* Todo list:
 
-[ ] 1. Specialize inductive block
+[X] 1. Specialize inductive block
     [X] 1.1 all but nested case
     [X] 1.2 nested case
-    [ ] 1.3 indices
+    [X] 1.3 indices
       [X] change instantiation
-      [ ] filter indices
-      [ ] changes indices everywhere
+      [X] filter indices
+      [X] changes indices everywhere
 [ ] 2. Proof positivity is preserved
     [X] 2.1 all but nested case
     [X] 2.2 nested case
-    [ ] 2.3 indices
+    [X] 2.3 indices
+    [ ] 2.4 modify pos cdt
 [X] 3. Nested to Mutual
 [X] 4. Positivity is preserved
 
@@ -36,153 +37,12 @@ Indices :
 
 *)
 
-(* Strengthening *)
-(* Definition rename (f : nat -> nat) (above : nat) : term -> term :=
-  rename (shiftn above f). *)
-
-Definition strengthen_renaming k f : nat -> nat :=
-  fun n => if n <? k then n else f (n - k).
-
-Definition strengthen_term k : term -> term :=
-  rename (strengthen_renaming k (fun n => n)).
-
-Definition strengthen_pred k P : nat -> bool :=
-  fun n => P (n + k).
-
-(* Definition on_free_vars_strengthen P k t :
-  on_free_vars (fun n => k-1 <? n) t ->
-  on_free_vars P t ->
-  on_free_vars (strengthen_pred k P) (strengthen_term k t).
-Proof.
-  intros Hnotin Ht.
-  assert (Hboth : on_free_vars (fun n => P n && (k - 1 <? n)) t).
-    1: { rewrite -on_free_vars_andb. apply andb_true_intro. constructor => //. }
-  rewrite on_free_vars_rename. eapply on_free_vars_impl; only 2 : exact Hboth; cbn.
-  unfold strengthen_pred, strengthen_renaming.
-  intros i. intros [Pi ki]%andb_prop.
-  assert (i <? k = false) as -> by lia.
-  replace (i - k + k) with i by lia; done.
-Qed. *)
-
-(* Definition on_free_vars_shiftn_strengthen P k t :
-  on_free_vars (fun n => k-1 <? n) t ->
-  on_free_vars (shiftnP k P) t ->
-  on_free_vars P (strengthen_term k t).
-Proof.
-  intros Hnotin Ht.
-  rewrite on_free_vars_rename.
-  refine (on_free_vars_impl2 _ Hnotin Ht).
-  unfold shiftnP, strengthen_renaming.
-  intros i ki [ik | Pik]%orb_prop; hnf in ki; try lia.
-  assert (i <? k = false) as -> by lia.
-  replace (i - k + k) with i by lia; done.
-Qed. *)
-
-(* Definition strengthen_k_pos Γ Δ lax nb_binders arg k :
-  on_free_vars_argument (fun n => k -1 <? n) arg ->
-  positive_argument nb_block up nup (Γ ++ Δ) lax nb_binders arg ->
-  positive_argument nb_block up nup Γ lax nb_binders (strengthen_argument #|Δ| arg).
-Proof.
-Admitted. *)
-
-Definition unlift_lift p k t :
-  on_free_vars (shiftnP k (fun i => ~~ (i <? p))) t ->
-  t = lift p k (unlift p k t).
-Proof.
-  intros X. induction t.
-  + unfold unlift, unlift_renaming. cbn in *. unfold shiftnP in X.
-    destruct (Nat.ltb_spec (n - k) p), (Nat.ltb_spec n k).
-    - replace (k <=? n) with false by lia. reflexivity.
-    - inversion X.
-    - replace (k <=? n ) with false by lia. reflexivity.
-    - replace (k <=? n - p) with true by lia. f_equal. lia.
-  + admit.
-Admitted.
-
-(*
-rename (shiftn k f) t =>>
-  k + f (n - k) | k -- 0
-
-rename (shiftn k f) (lift i k) (tRel n) =>>
-    n <= k  =>   k
-    n > k   =>   k + f (n + i - k)
-
-rename (shiftn k (strengthen_renaming i g)) (lift i k) (tRel n) =>>
-    n <= k  =>   k
-    n > k   =>   k + f (n + i - k -i) = k + f (n - k)
-  = rename (shiftn k g)
-
-For k = 0, shiftn k = id =>>
-  rename (strengthen_renaming n f) (lift0 n t) = (rename f t)
-  => f (i + n -n) = f (i)
-*)
-    Definition shiftn_strengthen n k f t :
-        rename (shiftn k (strengthen_renaming n f)) (lift n k t)
-      = (rename (shiftn k f) t).
-    Proof.
-      induction t ; cbn.
-      + unfold shiftn, strengthen_renaming; cbn.
-        destruct (Nat.ltb_spec k n0); f_equal.
-        - assert (k <=? n0 = true) as -> by lia.
-          assert (n + n0 <? k = false) as -> by lia.
-          assert (n0 <? k = false) as -> by lia.
-          assert (n + n0 - k <? n = false) as -> by lia.
-          replace (n + n0 - k - n) with (n0 - k) by lia.
-          reflexivity.
-        - destruct (Nat.leb_spec k n0).
-          * assert (n + n0 <? k = false) as -> by lia.
-            assert (n + n0 - k <? n = false) as -> by lia.
-            assert (n0 <? k = false) as -> by lia.
-            replace (n + n0 - k - n) with (n0 - k) by lia.
-            reflexivity.
-          * assert (n0 <? k = true) as -> by lia.
-            reflexivity.
-    Admitted.
-
-(*
-(* Tests *)
-Definition try1 := [false; false; true; false; true; true; false].
-
-Definition cpt_args2 (acc : list bool * (nat -> nat)) (b : bool)
-    : list bool * (nat -> nat) :=
-  if b
-  then (acc.1, strengthen_renaming 1 acc.2)
-  else (acc.1 ++ [b], shiftn 1 acc.2).
-
-Definition ff2 : nat -> nat
-  := (fold_left cpt_args2 try1 ([],fun n => n)).2.
-
-(*
--------------------------------------
-| 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
--------------------------------------
-| 5 | 4 | 3 | 2 | X | 1 | X | X | 0 |
--------------------------------------
-*)
-
-Compute (ff2 8). Compute (ff2 7). Compute (ff2 6). Compute (ff2 5).
-Compute (ff2 4). Compute (ff2 3). Compute (ff2 2). Compute (ff2 1). Compute (ff2 0).
-*)
-
-
-
-
-
-(* check if the var is in *)
-Definition notin_of_rev_list (lb : list bool) : nat -> bool :=
-  (fun n => ~~ (nth n (List.rev lb) false)).
-
-Definition on_free_var_of_rev_list (lb : list bool) k : term -> bool :=
-  on_free_vars (shiftnP k (notin_of_rev_list lb)).
-
-Definition rc_notin Γ : nat -> term -> bool
-  := on_free_var_of_rev_list (map check_lax Γ).
 
 Definition rc_notin_false Γ arg i t :
   check_lax arg = false ->
   rc_notin (Γ ++ [arg]) i t = rc_notin Γ (i + 1) t.
 Proof.
-  unfold rc_notin, on_free_var_of_rev_list. intros lax_arg.
+  unfold rc_notin, rc_notin_bool. intros lax_arg.
   apply on_free_vars_ext. unfold notin_of_rev_list.
   rewrite -shiftnP_add. eapply shiftnP_ext; intros n.
   rewrite map_app; cbn. rewrite lax_arg.
@@ -197,7 +57,7 @@ Definition rc_notin_true Γ arg i t :
   check_lax arg = true ->
   rc_notin (Γ ++ [arg]) i t = on_free_vars (shiftnP i (shiftnPneg 1 (notin_of_rev_list (map check_lax Γ)))) t.
 Proof.
-  unfold rc_notin, on_free_var_of_rev_list. intros lax_arg.
+  unfold rc_notin, rc_notin_bool. intros lax_arg.
   apply on_free_vars_ext.
   unfold notin_of_rev_list.
   eapply shiftnP_ext; intros n.
@@ -214,7 +74,7 @@ Section StrengthArg.
   (* remove one arg or update it, and the renaming function  *)
   Definition StrPosArg olb (arg : argument) : Type :=
     (* rc not in arg *)
-    on_free_vars_argument (notin_of_rev_list olb) arg *
+    rc_notin_argument_bool olb 0 arg *
     (* arg is pos *)
     positive_argument nb_block up nup olb true 0 arg.
 
@@ -269,7 +129,7 @@ Section StrengthArg.
       rewrite shiftn_strengthen.
       eapply pos_rename_no_rc.
       (* so tedious *)
-      - unfold rc_notin, unlift, on_free_var_of_rev_list.
+      - unfold rc_notin, unlift, rc_notin_bool.
         rewrite on_free_vars_rename.
         unfold shiftnPneg in rc_notin_t. unfold unlift_renaming.
         eapply on_free_vars_impl; only 2 : apply rc_notin_t.
@@ -314,8 +174,8 @@ Section StrengthArg.
         destruct arg; only 2-4: inversion lax_arg.
         cbn. constructor.
         rewrite length_map. apply pos_rename_no_rc.
-        * rewrite on_free_vars_argument_free1 in rc_notin_arg.
-          unfold rc_notin, on_free_var_of_rev_list. rewrite shiftnP0 //.
+        * rewrite (rc_notin_argument_bool_free ) in rc_notin_arg.
+          unfold rc_notin. done.
         * inversion pos_arg. eapply eq_notin; tea. solve_length.
       - cbn_length; cbn. intros i t rc_notin_t isup_notin_t.
         rewrite shiftn_add.
@@ -371,8 +231,8 @@ Section StrengthArg.
 
 End StrengthArg.
 
-
 Definition rename f above : term -> term := rename (shiftn above f).
+
 
 (* *** Nested to Mutual *** *)
 
@@ -396,7 +256,8 @@ Section NestedToMutualInd.
   Notation nb_g_args := #|g_args|.
   Context (pos_g_args :
     All_telescope (fun Γ arg =>
-      is_true (on_free_vars_argument (notin_of_rev_list (map check_lax Γ)) arg) *
+      is_true (rc_notin_argument Γ 0 arg) *
+      (* (forall Ht : check_lax arg = false, is_true (rc_notin Γ 0 (strict_to_term arg Ht))) * *)
       positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax Γ) true 0 arg
     )
   g_args).
@@ -406,6 +267,7 @@ Section NestedToMutualInd.
   Notation nb_g_largs := #|g_largs|.
 
   Context (pos_g_largs : Alli (ind_sp_uparams_notin g_uparams_b) (nb_g_nuparams + nb_g_args) g_largs).
+  Context (rc_notin_g_largs : Alli (rc_notin g_args) 0 g_largs).
 
   (* Information about the inductive type used for nesting *)
   Context (nb_l_block : nat).
@@ -435,6 +297,10 @@ Section NestedToMutualInd.
         * positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args) pos (nb_g_largs + #|llargs|) arg
     ) inst_uparams_a (List.rev l_uparams_b)).
 
+  Context (rc_notin_inst_llargs_args :
+    All (fun p => Alli (rc_notin g_args) nb_g_largs p.1
+                  * (rc_notin_argument g_args (nb_g_largs + #|p.1|) p.2))
+    inst_uparams_a).
 
   (* ### 2. Old Spec ### *)
   Definition size_inst_uparams : #|inst_uparams_a| = nb_l_uparams.
@@ -459,6 +325,7 @@ Section NestedToMutualInd.
     All (fun p => Alli (ind_sp_uparams_notin g_uparams_b) nb_old_cxt_sub p.1)
         inst_uparams_a.
   Proof.
+    clear rc_notin_g_largs rc_notin_inst_llargs_args.
     induction spec_inst_uparams_a; cbn in spec_inst_uparams_a; constructor.
     inversion spec_inst_uparams_a. subst.
     destruct x as [llargs arg], y as [cdecl pos], r as [[fapp pos_llargs] pos_arg]; cbn in * => //.
@@ -469,6 +336,7 @@ Section NestedToMutualInd.
     All (fun x => positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args)
                       true (nb_g_largs + #|x.1|) x.2) inst_uparams_a.
   Proof.
+    clear rc_notin_g_largs rc_notin_inst_llargs_args.
     induction spec_inst_uparams_a; constructor; cbn; eauto.
     destruct x as [llargs arg], y as [cdecl pos], r as [[fapp ?] pos_arg]; cbn in *.
     destruct pos => //. apply positive_argument_increase2 => //.
@@ -494,15 +362,6 @@ Section NestedToMutualInd.
 
 
   (* 3. ### New args context and subsitution and properties ### *)
-  Definition rc_notin_args : nat -> argument -> bool :=
-    todo.
-
-  Axiom (notin_g_largs : Alli (rc_notin g_args) 0 g_largs).
-  Axiom (notin_inst_llargs_args :
-    All (fun p => Alli (rc_notin g_args) nb_g_largs p.1
-                  * rc_notin_args (nb_g_largs + #|p.1|) p.2)
-    inst_uparams_a).
-
 
   (* New args + Spec *)
   Definition g_args_no_rc : list argument :=
@@ -548,7 +407,7 @@ Section NestedToMutualInd.
 
   (* should follow *)
   Definition pos_rename_no_rc_arg lax i arg :
-    rc_notin_args i arg ->
+    rc_notin_argument g_args i arg ->
     positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args) lax i arg ->
     positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args_no_rc) lax i
                                       (rename_argument rename_no_rc i arg).
@@ -564,7 +423,7 @@ Section NestedToMutualInd.
   Definition pos_g_largs_no_rc :
     Alli (ind_sp_uparams_notin g_uparams_b) (nb_g_nuparams + nb_g_args_no_rc) g_largs_no_rc.
   Proof.
-    eapply (Alli_mapi2 notin_g_largs pos_g_largs); cbn.
+    eapply (Alli_mapi2 rc_notin_g_largs pos_g_largs); cbn.
     apply pos_rename_no_rc.
   Qed.
 
@@ -597,7 +456,7 @@ Section NestedToMutualInd.
         inst_uparams_no_rc.
   Proof.
     unfold inst_uparams_no_rc.
-    eapply All_map, (All_impl2 positive_inst_llargs notin_inst_llargs_args).
+    eapply All_map, (All_impl2 positive_inst_llargs rc_notin_inst_llargs_args).
     intros [llargs arg]; cbn. intros X [Y _].
     eapply (Alli_mapi2 X Y).
     intros. eapply eq_notin.
@@ -610,7 +469,7 @@ Section NestedToMutualInd.
                       true (nb_g_largs + #|x.1|) x.2) inst_uparams_no_rc.
   Proof.
     unfold inst_uparams_no_rc.
-    eapply All_map, (All_impl2 notin_inst_llargs_args positive_true_all).
+    eapply All_map. eapply (All_impl2 rc_notin_inst_llargs_args positive_true_all).
     intros [llargs arg]; cbn_length; cbn. intros [_ ?] ?.
     apply pos_rename_no_rc_arg => //.
   Qed.
@@ -622,8 +481,6 @@ Section NestedToMutualInd.
     fun '(llargs, arg) =>
       (it_tLambda llargs (argument_to_term nb_g_block g_uparams_b (nb_new_cxt_sub + #|llargs|) arg)).
 
-  Axiom (notin_args_free : forall n t , rc_notin_args n (arg_is_free t) = rc_notin g_args n t).
-
   Definition pos_inst_to_term :
     All2 (fun x y =>
         y.2 = false -> ind_sp_uparams_notin g_uparams_b (nb_new_cxt_sub) (inst_to_term x)
@@ -632,7 +489,7 @@ Section NestedToMutualInd.
     unfold inst_uparams_no_rc.
     eapply All2_map_left. eapply All2_impl2.
     + apply spec_inst_uparams_a.
-    + apply All2_left_triv. 2: rewrite size_inst_uparams; solve_length. apply notin_inst_llargs_args.
+    + apply All2_left_triv. 2: rewrite size_inst_uparams; solve_length. apply rc_notin_inst_llargs_args.
     + intros [llargs arg] [cdecl pos] [[fapp_llargs notin_llargs] pos_arg]
         [rc_notin_llargs rc_notin_arg] pos_lax. cbn in *. cbn_length.
       apply ind_sp_uparams_notin_tLambda => //.
@@ -643,7 +500,7 @@ Section NestedToMutualInd.
         destruct (positive_argument_strict pos_arg) as [t [notin_t ->]]; cbn.
         cbn_length. eapply eq_notin; only 2: apply pos_rename_no_rc.
       * lia.
-      * rewrite -notin_args_free //.
+      * rewrite -rc_notin_argument_free //.
       * eapply eq_notin; tea; solve_length.
   Qed.
 
@@ -933,15 +790,19 @@ Section NestedToMutualInd.
     + apply ind_sp_uparams_notin_tProd => //.
       apply ind_sp_uparams_notin_mkApps => //.
       eapply ind_sp_uparams_notin_tLambda_eq; tea. lia.
+    + apply Alli_app_inv; tea. eapply (Alli_mapi isup_notin_largs).
+      intros j x; eapply ind_sp_uparams_notin_subst_rev_eq; tea; lia.
+    + admit.
+    + admit.
     + induction Ppos_nested; constructor. 2: apply IHPpos_nested.
       destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
       cbn_length; repeat split => //.
       - solve_sub_uparams_largs.
-      - clear p al Ppos_nested notin_instance IHPpos_nested.
+      - clear p al Ppos_nested isup_notin_instance IHPpos_nested.
         rewrite Heqp in pos_l_arg.
         eapply pos_subst_argument_eq; tea. 4: apply All_rev; tea.
         all: cbn_length; try reflexivity; lia.
-  Qed.
+  Admitted.
 
 
   Definition err_arg : list term * argument
@@ -1018,12 +879,13 @@ Section NestedToMutualInd.
           rewrite -{1}(Nat.add_0_r (nb_l_nuparams + #|Γ| + nb_binders + #|largs|)).
           apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn. exact H.
       - apply pos_arg_inc => //.
-        (* wrong args *)
         assert (positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args_no_rc) lax (nb_g_largs + #|llargs|) arg_to_sub).
         1: { rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_inst_uparams_no_rc; lia.
              destruct lax; only 2: inversion e. apply positive_true_all_no_rc.
           }
-        eapply @pos_lift_argument_eq with (Γargs1 := (map check_lax (g_args_no_rc ++ map arg_is_free g_largs_no_rc))) (nb_binders := 0) (n := nb_binders + #|largs|).
+        eapply @pos_lift_argument_eq with
+          (Γ1 := (map check_lax (g_args_no_rc ++ map arg_is_free g_largs_no_rc)))
+          (nb_binders := 0) (n := nb_binders + #|largs|).
         * reflexivity.
         * rewrite !map_app -!app_assoc. reflexivity.
         * lia.
@@ -1040,12 +902,14 @@ Section NestedToMutualInd.
     + apply pos_arg_is_nested with (mdecl := mdecl); rewrite -> ? length_map in * => //.
       - apply Alli_notin_eq => //. solve_length.
       - apply All_notin_eq => //. solve_length.
+      - admit.
+      - admit.
       - induction Ppos_nested; rewrite -> ? length_map in * ; constructor; only 2: apply IHPpos_nested.
         destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
         cbn_length; repeat split => //.
         * apply Alli_notin_eq => //. lia.
         * apply_eq p. f_equal. lia.
-  Qed.
+  Admitted.
 
   (* The instanciation of the uniform parameters is defined in the context:
 
@@ -1084,8 +948,10 @@ Section NestedToMutualInd.
     intros [pos_cstr_args pos_cstr_indices]. split.
     (* pos args *)
     + apply All_telescope_app_inv.
-      - apply pos_cstr_new_args.
-      - clear pos_cstr_indices.
+      - admit.
+      (* apply pos_cstr_new_args. *)
+      - admit.
+        (* clear pos_cstr_indices.
         induction pos_cstr_args; cbn. 1: constructor.
         rewrite mapi_app. apply All_telescope_app_inv.
         * apply IHpos_cstr_args => //.
@@ -1093,12 +959,12 @@ Section NestedToMutualInd.
           unfold mapi. rewrite -mapi_rec_add. fold specialize_argument.
           rewrite {1}Nat.add_0_r app_nil_r Nat.add_assoc.
           apply pos_specialize_argument with (Γ := Γ).
-          assumption.
+          assumption. *)
     + cbn_length. apply All_app_inv.
       - unfold tRels. apply All_rev_pointwise_map; cbn.
         intros. apply shiftnP_lt. lia.
       - apply All_notin_eq; tea. lia.
-  Qed.
+  Admitted.
 
   Definition specialize_one_inductive_body (idecl : one_inductive_body) : one_inductive_body :=
   {|
@@ -1195,18 +1061,24 @@ Section NestedToMutualIndb.
     end.
 
   (* Fold Arguments *)
+  Definition PosArgBool lb arg :=
+    rc_notin_argument_bool lb 0 arg *
+    positive_argument nb_g_block g_uparams_b g_nuparams lb true 0 arg.
+
   Definition PosArg Γ (arg : argument) : Type :=
-    positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax Γ) true 0 arg.
+    PosArgBool (map check_lax Γ) arg.
 
   Definition PosAcc (acc : Acc) : Type :=
       let nargs := acc.1 in let acc_indb := acc.2 in
-        All_telescope (fun Γ => positive_argument (nb_g_block + #|acc_indb|)
-                        g_uparams_b g_nuparams (map check_lax Γ) true 0) nargs
+        All_telescope (fun Γ arg =>
+          is_true (rc_notin_argument Γ 0 arg) *
+          positive_argument (nb_g_block + #|acc_indb|) g_uparams_b g_nuparams (map check_lax Γ) true 0 arg
+        ) nargs
     * (All (positive_one_inductive_body (nb_g_block + #|acc_indb|) g_uparams_b g_nuparams) acc_indb).
 
   Tactic Notation "solve_nested_to_mut" :=
     split => //; apply All_telescope_app_inv => //; repeat constructor => //;
-    apply All_telescope_singleton; rewrite app_nil_r; constructor => //; lia.
+    apply All_telescope_singleton; rewrite app_nil_r; split => //; constructor => //; lia.
 
   Definition pos_nested_to_mutual_one_argument (acc : Acc) arg :
     (* spec *)
@@ -1216,7 +1088,7 @@ Section NestedToMutualIndb.
   Proof.
     destruct acc as [nargs acc_indb].
     unfold PosAcc, PosArg.
-    intros [pos_nargs pos_acc_indb] pos_arg.
+    intros [pos_nargs pos_acc_indb] [rc_notin_arg pos_arg].
     destruct pos_arg; cbn in *.
     all: try solve_nested_to_mut.
     rewrite -> ? Nat.add_0_r in *.
@@ -1224,19 +1096,23 @@ Section NestedToMutualIndb.
     rewrite e0; cbn in *. cbn_length.
     pose proof (p := E_pos kname); rewrite e0 in p; cbn in p.
     destruct p as [pos_l_nuparams pos_l_indb]. split; cbn.
-    + apply All_telescope_app_inv. 1: (eapply All_telescope_impl; tea; intros; apply pos_arg_inc) => //.
-      apply All_telescope_singleton; rewrite app_nil_r. constructor; cbn_length => //.
-      1: { rewrite -mutual_to_view_ind. lia. }
-      apply All_app_inv => //. repeat apply All_app_inv.
-      - apply All_rev_pointwise_map; intros; apply shiftnP_lt; lia.
-      - apply All_filter2, All_rev_pointwise_map; intros; apply shiftnP_lt; lia.
-      - apply All_rev_pointwise_map; intros; apply shiftnP_lt; lia.
+    + apply All_telescope_app_inv.
+      1 :{ eapply All_telescope_impl; tea; cbn.
+           intros Γ myarg [rc_notin_myarg pos_myarg]. split => //. apply pos_arg_inc => //. }
+      apply All_telescope_singleton. rewrite app_nil_r. split => //.
+      - admit.
+      - constructor; cbn_length => //.
+        1: { rewrite -mutual_to_view_ind. lia. }
+        apply All_app_inv => //. repeat apply All_app_inv.
+        * apply All_rev_pointwise_map; intros; apply shiftnP_lt; lia.
+        * apply All_filter2, All_rev_pointwise_map; intros; apply shiftnP_lt; lia.
+        * apply All_rev_pointwise_map; intros; apply shiftnP_lt; lia.
     + apply All_app_inv; only 1: (eapply All_impl; tea; intros; apply pos_idecl_inc) => //.
       eapply All_map, (All_impl pos_l_indb), pos_specialize_idecl => //.
       eapply All2_impl; only 1: rewrite -mutual_to_view_uparams; tea.
       intros [llargs arg] [cdecl pos] [[fapp pos_llargs] pos_arg].
       cbn in *. repeat split; tea. apply pos_arg_inc => //.
-  Qed.
+  Admitted.
 
   Definition length1_nested_to_mutual_one_argument acc arg :
     #|(nested_to_mutual_one_argument acc arg).1| = 1 + #|acc.1|.
@@ -1262,14 +1138,13 @@ Section NestedToMutualIndb.
   (* ccl fold *)
   Definition pos_nested_to_mutual_argument {args acc_indb}
     (* spec *)
-    (pos_args : All_telescope (fun Γ => positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax Γ) true 0) args)
+    (pos_args : All_telescope PosArg args)
     (pos_acc_indb : All (positive_one_inductive_body (nb_g_block + #|acc_indb|) g_uparams_b g_nuparams) acc_indb) :
     (* new_spec *)
     PosAcc (nested_to_mutual_argument args acc_indb).
   Proof.
     unfold nested_to_mutual_argument.
-    eapply ( spec_fold_All_check check_lax _ _ _ PosAcc (fun lb arg => positive_argument nb_g_block g_uparams_b g_nuparams lb true 0 arg)); cbn.
-    all: set (PX := (fun lb => positive_argument nb_g_block g_uparams_b g_nuparams lb true 0)) in *.
+    eapply (spec_fold_All_check check_lax _ _ _ PosAcc PosArgBool); cbn.
     - apply All_telescope_to_All_check. done.
     - repeat constructor; cbn => //.
     - clear. intros [acc_nargs acc_indb] arg.

@@ -150,6 +150,14 @@ Definition strict_to_term arg (Hlax : check_lax arg = false) : term.
   exact t.
 Defined.
 
+Definition argument_strict {arg} :
+  forall (Ht : check_lax arg = false),
+  arg = arg_is_free (strict_to_term arg Ht).
+Proof.
+  destruct arg; intros Ht; inversion Ht.
+  done.
+Qed.
+
 Fixpoint argument_mapi (f : nat -> term -> term) above arg : argument :=
   match arg with
   | arg_is_free t => arg_is_free (f above t)
@@ -179,11 +187,7 @@ Qed.
 
 Definition lift_argument n := argument_mapi (lift n).
 Definition subst_argument l := argument_mapi (subst l).
-Definition rename_argument f : nat -> argument -> argument :=
-  argument_mapi (fun i => rename (shiftn i f)).
-
-
-
+Definition rename_argument f := argument_mapi (fun n => rename (shiftn n f)).
 
 Axiom (on_free_vars_argument : (nat -> bool) -> argument -> bool).
 Axiom (on_free_vars_argument_free1 : forall P t, on_free_vars_argument P (arg_is_free t) = on_free_vars P t).
@@ -321,14 +325,39 @@ Section PositiveIndBlock.
     map (fun x => cdecl_to_arity x.1) uparams_b.
 
 
+  (* check there are no potential rc *)
+  Definition notin_of_rev_list (lb : list bool) : nat -> bool :=
+    (fun n => ~~ (nth n (List.rev lb) false)).
+
+  Definition rc_notin_bool (lb : list bool) k : term -> bool :=
+    on_free_vars (shiftnP k (notin_of_rev_list lb)).
+
+  Definition rc_notin Γ : nat -> term -> bool
+    := rc_notin_bool (map check_lax Γ).
+
+  Definition rc_notin_argument_bool (lb : list bool) : nat -> argument -> bool :=
+    todo.
+
+  Definition rc_notin_argument_bool_free lb n t :
+    rc_notin_argument_bool lb n (arg_is_free t) = rc_notin_bool lb n t :=
+  todo.
+
+  Definition rc_notin_argument Γ :=
+    rc_notin_argument_bool (map check_lax Γ).
+
+  Definition rc_notin_argument_free Γ n t :
+    rc_notin_argument Γ n (arg_is_free t) = rc_notin Γ n t :=
+  todo.
+
+
   Reserved Notation " lax |> size_cxt |arg+> t " (at level 50, t at next level).
 
   (* Unset Elimination Schemes. *)
 
   Section PosArg.
 
-  Context (Γargs : list bool).
-  Notation nb_args := #|Γargs|.
+  Context (Γ : list bool).
+  Notation nb_args := #|Γ|.
 
   Notation size_cxt := (nb_nuparams + nb_args).
 
@@ -373,6 +402,11 @@ Section PositiveIndBlock.
     (* declared mdecl + pos_ind *)
     lookup_minductive E kname = Some mdecl ->
     pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
+    (* no rc *)
+    Alli (rc_notin_bool Γ) 0 largs ->
+    All (fun p => Alli (rc_notin_bool Γ) #|largs| p.1
+                  * rc_notin_argument_bool Γ (#|largs| + #|p.1|) p.2)
+        inst_uparams ->
     (* inst_uparams are positive *)
     All2 (fun x y =>
       (* fully applied ensured by typing*)
@@ -408,29 +442,32 @@ Section PositiveIndBlock.
         (e : lax = true) (pos_k : k < #|uparams_b|)
         (is_sp : nth k (map snd (List.rev uparams_b)) false)
         (fapp : nth k (List.rev uparams_nb_args) 0 = #|inst_args|)
-        (notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
-        (notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_args),
+        (isup_notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
+        (isup_notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_args),
         (* ------------------------ *)
-        P (pos_arg_is_sp_uparams lax nb_binders largs k inst_args e pos_k is_sp fapp notin_largs notin_args)
+        P (pos_arg_is_sp_uparams lax nb_binders largs k inst_args e pos_k is_sp fapp isup_notin_largs isup_notin_args)
       )
     (P_arg_is_ind :
         forall lax nb_binders (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
         (e : lax = true) (pos_ind : pos_indb < nb_block)
-        (notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
-        (notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices),
+        (isup_notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
+        (isup_notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices),
         (* ------------------------ *)
         P (pos_arg_is_ind lax nb_binders largs pos_indb inst_nuparams_indices
-              e pos_ind notin_largs notin_args)
+              e pos_ind isup_notin_largs isup_notin_args)
       )
     (P_arg_is_nested:
         forall lax nb_binders (largs : list term) (kname : kername) (pos_ind : nat) (u : Instance.t)
         (inst_uparams : list (list term × argument)) (inst_nuparams_indices : list term)
         (mdecl : PCUICEnvironment.mutual_inductive_body)
         (e : lax = true)
-        (notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
-        (notin_instance : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices)
+        (isup_notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
+        (isup_notin_instance : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices)
         (ind_env_defined : lookup_minductive E kname = Some mdecl)
         (ind_pos_defined : pos_ind < #|PCUICEnvironment.ind_bodies mdecl|)
+        (rc_notin_largs : Alli (rc_notin_bool Γ) 0 largs)
+        (rc_notin_instance : All (fun p => Alli (rc_notin_bool Γ) #|largs| p.1
+                             * rc_notin_argument_bool Γ (#|largs| + #|p.1|) p.2) inst_uparams)
         (pos_nested :
             All2 (fun (x : list term × argument) (y : context_decl × bool) =>
               (#|x.1| = cdecl_to_arity y.1
@@ -440,20 +477,29 @@ Section PositiveIndBlock.
         (Ppos_nested : All2_param1 (fun x y r => P r.2) pos_nested),
         (* ------------------------ *)
         P (pos_arg_is_nested lax nb_binders largs kname pos_ind u inst_uparams inst_nuparams_indices mdecl
-              e notin_largs notin_instance ind_env_defined ind_pos_defined pos_nested)
+              e isup_notin_largs isup_notin_instance ind_env_defined ind_pos_defined
+              rc_notin_largs rc_notin_instance pos_nested)
       )
     : forall lax nb_binders arg (p : positive_argument lax nb_binders arg), P p.
   Proof.
     fix rec 4.
-    intros ? ? ? p. destruct p as [ | | | ? ? ? ? ? ? ? ? ? ? ? ? pos_nested].
+    intros lax nb_binders arg p.
+    destruct p as [ | | | ? ? ? ? ? ? ? ? ? ? ? ? rc_notin_largs rc_notin_instance pos_nested].
     - apply P_arg_is_free.
     - apply P_arg_is_sp_uparams.
     - apply P_arg_is_ind.
     - apply P_arg_is_nested.
+      clear rc_notin_instance.
       induction pos_nested; constructor; cbn.
       destruct x; destruct y; cbn.
       apply rec. apply IHpos_nested.
   Defined.
+
+  Definition positive_argument_false {nb_binders arg} :
+    positive_argument false nb_binders arg -> check_lax arg = false.
+  Proof.
+    intros H; destruct H; cbn; lia.
+  Qed.
 
   Definition positive_argument_strict {nb_binders arg} :
     positive_argument false nb_binders arg ->
@@ -487,11 +533,12 @@ Section PositiveIndBlock.
      2. The return indices do not contain the inductives nor the sp_uparams
   *)
   Definition positive_constructor (ctor : constructor_body) : Type :=
-      All_telescope (fun Γargs arg =>
+      All_telescope (fun Γ arg =>
         (* rec call not in the arg *)
-        (* is_true (on_free_vars_argument (notin_of_rev_list (map check_lax Γ)) arg) * *)
+        is_true (rc_notin_argument Γ 0 arg) *
+        (* (forall Ht : check_lax arg = false, is_true (rc_notin Γ 0 (strict_to_term arg Ht))) * *)
         (* arg is positive *)
-        positive_argument (map check_lax Γargs) true 0 arg)
+        positive_argument (map check_lax Γ) true 0 arg)
       ctor.(cstr_args)
    * All (ind_sp_uparams_notin (#|nuparams| + #|ctor.(cstr_args)|)) ctor.(cstr_indices).
 
@@ -517,15 +564,15 @@ Definition positive_mutual_inductive_body (mdecl : mutual_inductive_body) : Type
 Arguments positive_argument_strict {_ _ _ _ _ _}.
 
 (* Increasing the number of inductive block preserve positivity *)
-Definition pos_arg_inc {nb_block up nup Γargs lax nb_binders arg} k :
-  positive_argument nb_block up nup Γargs lax nb_binders arg ->
-  positive_argument (nb_block + k) up nup Γargs lax nb_binders arg.
+Definition pos_arg_inc {nb_block up nup Γ lax nb_binders arg} k :
+  positive_argument nb_block up nup Γ lax nb_binders arg ->
+  positive_argument (nb_block + k) up nup Γ lax nb_binders arg.
 Proof.
   intros pos_arg. induction pos_arg using positive_argument_rect'.
   - constructor => //.
   - constructor => //.
   - constructor => //. lia.
-  - econstructor; tea.
+  - econstructor; tea. clear rc_notin_instance.
     induction Ppos_nested; cbn in *; constructor.
     + destruct r as [[]]; repeat constructor => //.
     + apply IHPpos_nested.
@@ -536,8 +583,9 @@ Fixpoint pos_ctor_inc {nb_block up nup ctor} k :
   positive_constructor (nb_block + k) up nup ctor.
 Proof.
   intros [pos_args pos_indices]; split => //.
-  eapply All_telescope_impl; tea.
-  intros; apply pos_arg_inc => //.
+  eapply All_telescope_impl; tea. cbn.
+  intros Γ x [rc_notin_arg pos_arg]. split => //.
+  apply pos_arg_inc => //.
 Qed.
 
 Fixpoint pos_ctor_inc_le {nb_block up nup ctor} k :
@@ -591,36 +639,42 @@ Proof.
   intros -> X; exact X.
 Qed.
 
-Definition pos_arg_notin_unfold {nb_block up nup Γargs lax tm nb_binders} arg :
-  positive_argument nb_block up nup Γargs lax (#|tm| + nb_binders) arg ->
-  positive_argument nb_block up nup (Γargs ++ map check_lax tm) lax nb_binders arg.
+(* false now ? must be set to false ? *)
+Definition pos_arg_notin_unfold {nb_block up nup Γ lax tm nb_binders} arg :
+  positive_argument nb_block up nup Γ lax (#|tm| + nb_binders) arg ->
+  positive_argument nb_block up nup (Γ ++ map check_lax tm) lax nb_binders arg.
 Proof.
   remember (#|tm| + nb_binders) as p eqn:Heqp.
   intros pos_arg. revert nb_binders Heqp. induction pos_arg using positive_argument_rect'.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
-       try solve [apply_eq notin_largs; solve_length | eapply All_eq_notin; tea; solve_length].
+       try solve [apply_eq isup_notin_largs; solve_length | eapply All_eq_notin; tea; solve_length].
   + eapply eq_notin; tea; solve_length.
-  + induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
+  + admit.
+  + admit.
+  + clear rc_notin_instance.
+    induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
           [[fapp pos_llargs] pos_inst] pos_arg RL IHRL ?]; constructor; eauto.
     cbn in *; cbn_length; repeat split => //.
     - apply_eq pos_llargs. solve_length.
     - apply_eq pos_arg. lia.
-Qed.
+Admitted.
 
-Definition pos_arg_notin_fold {nb_block up nup Γargs lax tm nb_binders} arg :
-  positive_argument nb_block up nup (Γargs ++ map check_lax tm) lax nb_binders arg ->
-  positive_argument nb_block up nup Γargs lax (#|tm| + nb_binders) arg.
+Definition pos_arg_notin_fold {nb_block up nup Γ lax tm nb_binders} arg :
+  positive_argument nb_block up nup (Γ ++ map check_lax tm) lax nb_binders arg ->
+  positive_argument nb_block up nup Γ lax (#|tm| + nb_binders) arg.
 Proof.
   intros pos_arg; induction pos_arg using positive_argument_rect'.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
-       try solve [apply_eq notin_largs; solve_length | eapply All_eq_notin; tea; solve_length].
+       try solve [apply_eq isup_notin_largs; solve_length | eapply All_eq_notin; tea; solve_length].
   + eapply eq_notin; tea; solve_length.
+  + admit.
+  + admit.
   + induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
           [[fapp pos_llargs] pos_inst] pos_arg RL IHRL ?]; constructor; eauto.
     cbn in *; cbn_length; repeat split => //.
     - apply_eq pos_llargs. solve_length.
     - apply_eq pos_arg. lia.
-Qed.
+Admitted.
 
 Definition on_free_vars_lift (p : nat -> bool) (c n k : nat)
   (t : term) (ft : on_free_vars (shiftnP (c + k) p) t) :
@@ -647,50 +701,54 @@ Tactic Notation "solve_All" :=
   eapply All_map, All_impl; only 1: tea ; cbn; cbn_length; intros t;
   eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
 
-Definition pos_lift_argument {nb_block up nup Γargs1 Γargs2 lax nb_binders} arg p n k :
-  positive_argument nb_block up nup Γargs1 lax p arg ->
+Definition pos_lift_argument {nb_block up nup Γ1 Γ2 lax nb_binders} arg p n k :
+  positive_argument nb_block up nup Γ1 lax p arg ->
   p = (nb_binders + k) ->
-  positive_argument nb_block up nup (Γargs1 ++ Γargs2) lax (nb_binders + n + k) (lift_argument (#|Γargs2| + n) k arg).
+  positive_argument nb_block up nup (Γ1 ++ Γ2) lax (nb_binders + n + k) (lift_argument (#|Γ2| + n) k arg).
 Proof.
   intro pos_arg. revert k.
   induction pos_arg using positive_argument_rect'; intros k0 ->.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea; try solve [solve_Alli | solve_All].
   + eapply on_free_vars_lift_eq; tea; cbn_length; reflexivity || lia.
+  + eapply Alli_mapi; only 1 : apply isup_notin_largs; intros i t;
+    eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
+  + admit.
+  + admit.
   + fold argument_mapi.
-    change (argument_mapi (lift (#|Γargs2| + n)))
-    with (lift_argument (#|Γargs2| + n)).
+    change (argument_mapi (lift (#|Γ2| + n)))
+    with (lift_argument (#|Γ2| + n)).
     induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
             [[fapp pos_llargs] pos_inst] pos_arg RL IHRL ?]; constructor; eauto.
     cbn in *; cbn_length; repeat split => //.
     - solve_Alli.
     - apply_eq pos_arg. all: lia.
-Qed.
+Admitted.
 
-Definition pos_lift_argument_eq {nb_block up nup Γargs1 Γargs2 lax nb_binders} arg p Γ q r n k :
+Definition pos_lift_argument_eq {nb_block up nup Γ1 Γ2 lax nb_binders} arg p Γ q r n k :
   p = nb_binders + k ->
-  Γ = Γargs1 ++ Γargs2 ->
+  Γ = Γ1 ++ Γ2 ->
   q = nb_binders + n + k ->
-  r = #|Γargs2| + n ->
-  positive_argument nb_block up nup Γargs1 lax p arg ->
+  r = #|Γ2| + n ->
+  positive_argument nb_block up nup Γ1 lax p arg ->
   positive_argument nb_block up nup Γ lax q (lift_argument r k arg).
 Proof.
   intros ? -> -> -> X. eapply pos_lift_argument; tea.
 Qed.
 
-Definition pos_subst_argument {nb_block up nup Γargs lax nb_binders} sub above arg  :
-  All (ind_sp_uparams_notin up ((#|nup| + #|Γargs|) + nb_binders)) sub ->
-  positive_argument nb_block up nup Γargs lax (nb_binders + #|sub| + above) arg ->
-  positive_argument nb_block up nup Γargs lax (nb_binders + above) (subst_argument sub above arg).
+Definition pos_subst_argument {nb_block up nup Γ lax nb_binders} sub above arg  :
+  All (ind_sp_uparams_notin up ((#|nup| + #|Γ|) + nb_binders)) sub ->
+  positive_argument nb_block up nup Γ lax (nb_binders + #|sub| + above) arg ->
+  positive_argument nb_block up nup Γ lax (nb_binders + above) (subst_argument sub above arg).
 Proof.
 Admitted.
 
-Definition pos_subst_argument_eq {nb_block up nup Γargs lax nb_binders} sub above arg p q j :
+Definition pos_subst_argument_eq {nb_block up nup Γ lax nb_binders} sub above arg p q j :
   p = nb_binders + #|sub| + above ->
   q = nb_binders + above ->
-  j = #|nup| + #|Γargs| + nb_binders ->
+  j = #|nup| + #|Γ| + nb_binders ->
   All (ind_sp_uparams_notin up j) sub ->
-  positive_argument nb_block up nup Γargs lax p arg ->
-  positive_argument nb_block up nup Γargs lax q (subst_argument sub above arg).
+  positive_argument nb_block up nup Γ lax p arg ->
+  positive_argument nb_block up nup Γ lax q (subst_argument sub above arg).
 Proof.
   intros -> -> ->; apply pos_subst_argument.
 Qed.
