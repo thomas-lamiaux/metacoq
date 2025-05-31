@@ -241,17 +241,17 @@ Section PositiveIndBlock.
   Definition sp_uparams_notin pos_arg : term -> bool :=
     on_free_vars (shiftnP pos_arg sp_uparams_notinP).
 
-  Definition ind_sp_uparams_notinP : nat -> bool :=
+  Definition isup_notinP : nat -> bool :=
     ind_notinP &&p sp_uparams_notinP.
 
-  Definition ind_sp_uparams_notin pos_arg : term -> bool :=
-    on_free_vars (shiftnP pos_arg ind_sp_uparams_notinP).
+  Definition isup_notin pos_arg : term -> bool :=
+    on_free_vars (shiftnP pos_arg isup_notinP).
 
   Definition tRel_is_sp_uparams : nat -> bool :=
   fun k => nth k (map snd (List.rev uparams_b)) false.
 
-  Definition ind_sp_uparams_notin_below k i :
-    i <? k -> ind_sp_uparams_notin k (tRel i).
+  Definition isup_notin_below k i :
+    i <? k -> isup_notin k (tRel i).
   Proof.
     cbn. unfold shiftnP. now intros ->.
   Qed.
@@ -272,35 +272,35 @@ Section PositiveIndBlock.
 
   (* lemma for binders *)
   (* already existing ??? on_free_var directly *)
-  Definition ind_sp_uparams_notin_tProd k l t :
-    Alli (ind_sp_uparams_notin) k l ->
-    ind_sp_uparams_notin (k + #|l|) t ->
-    ind_sp_uparams_notin k (it_tProd l t).
+  Definition isup_notin_tProd k l t :
+    Alli (isup_notin) k l ->
+    isup_notin (k + #|l|) t ->
+    isup_notin k (it_tProd l t).
   Proof.
     todo " totod".
   Qed.
 
-  Definition ind_sp_uparams_notin_tLambda (k : nat) (l : list term) (t : term) :
-    Alli (ind_sp_uparams_notin) k l ->
-    ind_sp_uparams_notin (k + #|l|) t ->
-    ind_sp_uparams_notin k (it_tLambda l t).
+  Definition isup_notin_tLambda (k : nat) (l : list term) (t : term) :
+    Alli (isup_notin) k l ->
+    isup_notin (k + #|l|) t ->
+    isup_notin k (it_tLambda l t).
   Proof.
     todo " totod".
   Qed.
 
-  Definition ind_sp_uparams_notin_tLambda_eq k l t m :
+  Definition isup_notin_tLambda_eq k l t m :
     m = k + #|l| ->
-    Alli (ind_sp_uparams_notin) k l ->
-    ind_sp_uparams_notin m t ->
-    ind_sp_uparams_notin k (it_tLambda l t).
+    Alli (isup_notin) k l ->
+    isup_notin m t ->
+    isup_notin k (it_tLambda l t).
   Proof.
     todo " totod".
   Qed.
 
-  Definition ind_sp_uparams_notin_mkApps k u vs :
-    All (ind_sp_uparams_notin k) vs ->
-    ind_sp_uparams_notin k u ->
-    ind_sp_uparams_notin k (mkApps u vs).
+  Definition isup_notin_mkApps k u vs :
+    All (isup_notin k) vs ->
+    isup_notin k u ->
+    isup_notin k (mkApps u vs).
   Proof.
     todo " totod".
   Qed.
@@ -364,7 +364,7 @@ Section PositiveIndBlock.
   (* size_cxt := nb_ binders already seen => nested case *)
   Inductive positive_argument (lax : bool) (nb_binders : nat) : argument -> Type :=
   | pos_arg_is_free t :
-    ind_sp_uparams_notin (size_cxt + nb_binders) t ->
+    isup_notin (size_cxt + nb_binders) t ->
     lax |> nb_binders |arg+> arg_is_free t
 
   | pos_arg_is_sp_uparams largs k inst_args :
@@ -376,9 +376,9 @@ Section PositiveIndBlock.
     (* and fully applied *)
     nth k (List.rev uparams_nb_args) 0 = #|inst_args| ->
     (* ind + sp_uparams ∉ largs *)
-    Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs ->
+    Alli isup_notin (size_cxt + nb_binders) largs ->
     (* ind + sp_uparams ∉ args *)
-    All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_args ->
+    All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args ->
     (* -------------------------------------------------------------- *)
     lax |> nb_binders |arg+> arg_is_sp_uparam largs k inst_args
 
@@ -387,18 +387,18 @@ Section PositiveIndBlock.
     (* pos_indb corresponds to an inductive block *)
     pos_indb < nb_block ->
     (* ind + sp_uparams ∉ largs *)
-    Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs ->
+    Alli isup_notin (size_cxt + nb_binders) largs ->
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
-    All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices ->
+    All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices ->
     (* -------------------------------------------------------------- *)
     lax |> nb_binders |arg+> arg_is_ind largs pos_indb inst_nuparams_indices
 
   | pos_arg_is_nested largs kname pos_ind u inst_uparams inst_nuparams_indices mdecl :
     lax = true ->
     (* ind + sp_uparams ∉ largs *)
-    Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs ->
+    Alli isup_notin (size_cxt + nb_binders) largs ->
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
-    All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices ->
+    All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices ->
     (* declared mdecl + pos_ind *)
     lookup_minductive E kname = Some mdecl ->
     pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
@@ -412,7 +412,7 @@ Section PositiveIndBlock.
       (* fully applied ensured by typing*)
       (#|x.1| = cdecl_to_arity y.1)
       (* llargs are free *)
-      * Alli (ind_sp_uparams_notin) (size_cxt + nb_binders + #|largs|) x.1
+      * Alli (isup_notin) (size_cxt + nb_binders + #|largs|) x.1
       (* args are pos lax or strict depending if you can nest or not *)
       * positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2
     ) inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl))
@@ -433,7 +433,7 @@ Section PositiveIndBlock.
   Definition positive_argument_rect'
     (P : forall {lax nb_binders arg}, positive_argument lax nb_binders arg -> Type)
     (P_arg_is_free :
-        forall lax nb_binders (t : term) (i : ind_sp_uparams_notin (size_cxt + nb_binders) t),
+        forall lax nb_binders (t : term) (i : isup_notin (size_cxt + nb_binders) t),
         (* ------------------------ *)
         P (pos_arg_is_free lax nb_binders t i)
       )
@@ -442,16 +442,16 @@ Section PositiveIndBlock.
         (e : lax = true) (pos_k : k < #|uparams_b|)
         (is_sp : nth k (map snd (List.rev uparams_b)) false)
         (fapp : nth k (List.rev uparams_nb_args) 0 = #|inst_args|)
-        (isup_notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
-        (isup_notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_args),
+        (isup_notin_largs : Alli isup_notin (size_cxt + nb_binders) largs)
+        (isup_notin_args : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args),
         (* ------------------------ *)
         P (pos_arg_is_sp_uparams lax nb_binders largs k inst_args e pos_k is_sp fapp isup_notin_largs isup_notin_args)
       )
     (P_arg_is_ind :
         forall lax nb_binders (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
         (e : lax = true) (pos_ind : pos_indb < nb_block)
-        (isup_notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
-        (isup_notin_args : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices),
+        (isup_notin_largs : Alli isup_notin (size_cxt + nb_binders) largs)
+        (isup_notin_args : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices),
         (* ------------------------ *)
         P (pos_arg_is_ind lax nb_binders largs pos_indb inst_nuparams_indices
               e pos_ind isup_notin_largs isup_notin_args)
@@ -461,8 +461,8 @@ Section PositiveIndBlock.
         (inst_uparams : list (list term × argument)) (inst_nuparams_indices : list term)
         (mdecl : PCUICEnvironment.mutual_inductive_body)
         (e : lax = true)
-        (isup_notin_largs : Alli ind_sp_uparams_notin (size_cxt + nb_binders) largs)
-        (isup_notin_instance : All (ind_sp_uparams_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices)
+        (isup_notin_largs : Alli isup_notin (size_cxt + nb_binders) largs)
+        (isup_notin_instance : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices)
         (ind_env_defined : lookup_minductive E kname = Some mdecl)
         (ind_pos_defined : pos_ind < #|PCUICEnvironment.ind_bodies mdecl|)
         (rc_notin_largs : Alli (rc_notin_bool Γ) 0 largs)
@@ -471,7 +471,7 @@ Section PositiveIndBlock.
         (pos_nested :
             All2 (fun (x : list term × argument) (y : context_decl × bool) =>
               (#|x.1| = cdecl_to_arity y.1
-              × Alli (fun (pos_arg : nat) (x0 : term) => ind_sp_uparams_notin pos_arg x0) (size_cxt + nb_binders + #|largs|) x.1)
+              × Alli (fun (pos_arg : nat) (x0 : term) => isup_notin pos_arg x0) (size_cxt + nb_binders + #|largs|) x.1)
               * (positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2))
             inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl)))
         (Ppos_nested : All2_param1 (fun x y r => P r.2) pos_nested),
@@ -503,7 +503,7 @@ Section PositiveIndBlock.
 
   Definition positive_argument_strict {nb_binders arg} :
     positive_argument false nb_binders arg ->
-    ∑ t, ((ind_sp_uparams_notin (size_cxt + nb_binders) t) * (arg = arg_is_free t)).
+    ∑ t, ((isup_notin (size_cxt + nb_binders) t) * (arg = arg_is_free t)).
   Proof.
     intro k; inversion k.
     1: eauto.
@@ -540,7 +540,7 @@ Section PositiveIndBlock.
         (* arg is positive *)
         positive_argument (map check_lax Γ) true 0 arg)
       ctor.(cstr_args)
-   * All (ind_sp_uparams_notin (#|nuparams| + #|ctor.(cstr_args)|)) ctor.(cstr_indices).
+   * All (isup_notin (#|nuparams| + #|ctor.(cstr_args)|)) ctor.(cstr_indices).
 
 
 (* A inductive body is positive when:
@@ -551,12 +551,12 @@ Section PositiveIndBlock.
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
       All positive_constructor indb.(ind_ctors)
     (* To add to prevent inductive-inductive types *)
-    * Alli (ind_sp_uparams_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
+    * Alli (isup_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
 
 End PositiveIndBlock.
 
 Definition positive_mutual_inductive_body (mdecl : mutual_inductive_body) : Type :=
-    Alli (ind_sp_uparams_notin mdecl.(ind_uparams)) 0 (terms_of_cxt mdecl.(ind_nuparams))
+    Alli (isup_notin mdecl.(ind_uparams)) 0 (terms_of_cxt mdecl.(ind_nuparams))
   * All (positive_one_inductive_body #|mdecl.(ind_bodies)| mdecl.(ind_uparams)
         mdecl.(ind_nuparams)) mdecl.(ind_bodies).
 
@@ -617,24 +617,24 @@ Qed.
 
 Definition All_eq_notin up n m l :
   n = m ->
-  All (fun x => ind_sp_uparams_notin up n x) l ->
-  All (fun x => ind_sp_uparams_notin up m x) l.
+  All (fun x => isup_notin up n x) l ->
+  All (fun x => isup_notin up m x) l.
 Proof.
   intros -> X; exact X.
 Qed.
 
 Definition Alli_eq_notin up n m l :
   n = m ->
-  Alli (fun n x => ind_sp_uparams_notin up n x) n l ->
-  Alli (fun n x => ind_sp_uparams_notin up n x) m l.
+  Alli (fun n x => isup_notin up n x) n l ->
+  Alli (fun n x => isup_notin up n x) m l.
 Proof.
   intros -> X; exact X.
 Qed.
 
 Definition eq_notin up n m x :
   n = m ->
-  ind_sp_uparams_notin up n x ->
-  ind_sp_uparams_notin up m x.
+  isup_notin up n x ->
+  isup_notin up m x.
 Proof.
   intros -> X; exact X.
 Qed.
@@ -736,7 +736,7 @@ Proof.
 Qed.
 
 Definition pos_subst_argument {nb_block up nup Γ lax nb_binders} sub above arg  :
-  All (ind_sp_uparams_notin up ((#|nup| + #|Γ|) + nb_binders)) sub ->
+  All (isup_notin up ((#|nup| + #|Γ|) + nb_binders)) sub ->
   positive_argument nb_block up nup Γ lax (nb_binders + #|sub| + above) arg ->
   positive_argument nb_block up nup Γ lax (nb_binders + above) (subst_argument sub above arg).
 Proof.
@@ -746,7 +746,7 @@ Definition pos_subst_argument_eq {nb_block up nup Γ lax nb_binders} sub above a
   p = nb_binders + #|sub| + above ->
   q = nb_binders + above ->
   j = #|nup| + #|Γ| + nb_binders ->
-  All (ind_sp_uparams_notin up j) sub ->
+  All (isup_notin up j) sub ->
   positive_argument nb_block up nup Γ lax p arg ->
   positive_argument nb_block up nup Γ lax q (subst_argument sub above arg).
 Proof.

@@ -89,8 +89,8 @@ Section StrengthArg.
       (* renaming is well-defined *)
     * (forall i t,
       rc_notin oargs i t ->
-      ind_sp_uparams_notin up (#|nup| + #|oargs| + i) t ->
-      ind_sp_uparams_notin up (#|nup| + #|nargs| + i) (rename (shiftn i rename_no_rc) t)).
+      isup_notin up (#|nup| + #|oargs| + i) t ->
+      isup_notin up (#|nup| + #|nargs| + i) (rename (shiftn i rename_no_rc) t)).
 
   Definition remove_rc_one (acc : StrAcc) arg :=
     if check_lax arg
@@ -118,7 +118,7 @@ Section StrengthArg.
     unfold remove_rc_one. destruct (check_lax arg) eqn:lax_arg; cbn in *.
     (* branch true => arg is removed *)
     + repeat split => //.
-      cbn_length; cbn. intros k t rc_notin_t isp_notin_t.
+      cbn_length; cbn. intros k t rc_notin_t isup_notin_t.
       rewrite rc_notin_true in rc_notin_t => //.
       rewrite -> (unlift_lift 1 k t).
       2: {
@@ -140,9 +140,9 @@ Section StrengthArg.
           1: discriminate.
           assert (i - 1 <? k = false) as -> by lia; cbn.
           intros JJ. replace (i - 1 -k) with (i - k - 1) by lia. done.
-      - unfold unlift, ind_sp_uparams_notin.
+      - unfold unlift, isup_notin.
         rewrite on_free_vars_rename.
-        eapply on_free_vars_impl2; [ | apply rc_notin_t | apply isp_notin_t  ].
+        eapply on_free_vars_impl2; [ | apply rc_notin_t | apply isup_notin_t  ].
         intros j. destruct k; cbn.
         * unfold shiftnPneg. destruct j; cbn.
           1: discriminate.
@@ -266,7 +266,7 @@ Section NestedToMutualInd.
   Context (g_largs : list term).
   Notation nb_g_largs := #|g_largs|.
 
-  Context (pos_g_largs : Alli (ind_sp_uparams_notin g_uparams_b) (nb_g_nuparams + nb_g_args) g_largs).
+  Context (pos_g_largs : Alli (isup_notin g_uparams_b) (nb_g_nuparams + nb_g_args) g_largs).
   Context (rc_notin_g_largs : Alli (rc_notin g_args) 0 g_largs).
 
   (* Information about the inductive type used for nesting *)
@@ -278,7 +278,7 @@ Section NestedToMutualInd.
 
   Context (l_nuparams : context).
   Notation nb_l_nuparams := #|l_nuparams|.
-  Context (pos_l_nuparams : Alli (ind_sp_uparams_notin l_uparams_b) 0
+  Context (pos_l_nuparams : Alli (isup_notin l_uparams_b) 0
                                 (terms_of_cxt l_nuparams)).
 
   (* Instantiation Nesting *)
@@ -292,7 +292,7 @@ Section NestedToMutualInd.
         (* fully applied ensured by typing*)
           (#|llargs| = cdecl_to_arity cdecl)
           (* llargs are free *)
-        * Alli (ind_sp_uparams_notin g_uparams_b) nb_old_cxt_sub llargs
+        * Alli (isup_notin g_uparams_b) nb_old_cxt_sub llargs
           (* args are pos lax or strict depending if you can nest or not *)
         * positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args) pos (nb_g_largs + #|llargs|) arg
     ) inst_uparams_a (List.rev l_uparams_b)).
@@ -322,7 +322,7 @@ Section NestedToMutualInd.
   Qed.
 
   Definition positive_inst_llargs :
-    All (fun p => Alli (ind_sp_uparams_notin g_uparams_b) nb_old_cxt_sub p.1)
+    All (fun p => Alli (isup_notin g_uparams_b) nb_old_cxt_sub p.1)
         inst_uparams_a.
   Proof.
     clear rc_notin_g_largs rc_notin_inst_llargs_args.
@@ -348,14 +348,14 @@ Section NestedToMutualInd.
 
   Definition pos_inst_to_term_old :
     All2 (fun x y =>
-        y.2 = false -> ind_sp_uparams_notin g_uparams_b (nb_old_cxt_sub) (inst_to_term_old x)
+        y.2 = false -> isup_notin g_uparams_b (nb_old_cxt_sub) (inst_to_term_old x)
     ) inst_uparams_a (List.rev l_uparams_b).
   Proof.
     eapply All2_impl ; [exact spec_inst_uparams_a|].
-    intros [llargs arg] [cdecl pos] [[fapp_llargs notin_llargs] pos_arg]; cbn in *.
+    intros [llargs arg] [cdecl pos] [[fapp_llargs isup_notin_llargs] pos_arg]; cbn in *.
     destruct pos. 1: intros x; inversion x.
     intros _. unfold inst_to_term_old.
-    apply ind_sp_uparams_notin_tLambda => //.
+    apply isup_notin_tLambda => //.
     destruct (positive_argument_strict pos_arg) as [t [_ ->]]; cbn.
     inversion pos_arg => //. eapply eq_notin; only 2: tea; solve_length.
   Qed.
@@ -397,8 +397,8 @@ Section NestedToMutualInd.
 
   Definition pos_rename_no_rc i t :
     (rc_notin g_args) i t ->
-    ind_sp_uparams_notin g_uparams_b (nb_g_nuparams + nb_g_args + i) t ->
-    ind_sp_uparams_notin g_uparams_b (nb_g_nuparams + nb_g_args_no_rc + i)
+    isup_notin g_uparams_b (nb_g_nuparams + nb_g_args + i) t ->
+    isup_notin g_uparams_b (nb_g_nuparams + nb_g_args_no_rc + i)
                                       (rename rename_no_rc i t).
   Proof.
     destruct (pos_remove_rc _ _ _ _ pos_g_args) as [[pos_oargs pos_nargs] pos_rename].
@@ -421,7 +421,7 @@ Section NestedToMutualInd.
     mapi (rename rename_no_rc) g_largs.
 
   Definition pos_g_largs_no_rc :
-    Alli (ind_sp_uparams_notin g_uparams_b) (nb_g_nuparams + nb_g_args_no_rc) g_largs_no_rc.
+    Alli (isup_notin g_uparams_b) (nb_g_nuparams + nb_g_args_no_rc) g_largs_no_rc.
   Proof.
     eapply (Alli_mapi2 rc_notin_g_largs pos_g_largs); cbn.
     apply pos_rename_no_rc.
@@ -452,7 +452,7 @@ Section NestedToMutualInd.
   Qed.
 
   Definition positive_inst_llargs_no_rc :
-    All (fun p => Alli (ind_sp_uparams_notin g_uparams_b) nb_new_cxt_sub p.1)
+    All (fun p => Alli (isup_notin g_uparams_b) nb_new_cxt_sub p.1)
         inst_uparams_no_rc.
   Proof.
     unfold inst_uparams_no_rc.
@@ -483,17 +483,18 @@ Section NestedToMutualInd.
 
   Definition pos_inst_to_term :
     All2 (fun x y =>
-        y.2 = false -> ind_sp_uparams_notin g_uparams_b (nb_new_cxt_sub) (inst_to_term x)
+        y.2 = false -> isup_notin g_uparams_b (nb_new_cxt_sub) (inst_to_term x)
     ) inst_uparams_no_rc (List.rev l_uparams_b).
   Proof.
     unfold inst_uparams_no_rc.
     eapply All2_map_left. eapply All2_impl2.
     + apply spec_inst_uparams_a.
-    + apply All2_left_triv. 2: rewrite size_inst_uparams; solve_length. apply rc_notin_inst_llargs_args.
-    + intros [llargs arg] [cdecl pos] [[fapp_llargs notin_llargs] pos_arg]
+    + apply All2_left_triv. 2: rewrite size_inst_uparams; solve_length.
+      apply rc_notin_inst_llargs_args.
+    + intros [llargs arg] [cdecl pos] [[fapp_llargs isup_notin_llargs] pos_arg]
         [rc_notin_llargs rc_notin_arg] pos_lax. cbn in *. cbn_length.
-      apply ind_sp_uparams_notin_tLambda => //.
-      - eapply (Alli_mapi2 notin_llargs rc_notin_llargs); cbn. intros.
+      apply isup_notin_tLambda => //.
+      - eapply (Alli_mapi2 isup_notin_llargs rc_notin_llargs); cbn. intros.
         eapply eq_notin; only 2: apply pos_rename_no_rc => //. lia.
         eapply eq_notin; tea; solve_length.
       - rewrite pos_lax in pos_arg.
@@ -511,23 +512,23 @@ Section NestedToMutualInd.
      then the instantiation does not contain the variable
   *)
   Definition pos_inst_uparams : forall n,
-    ind_sp_uparams_notinP l_uparams_b n ->
-    ind_sp_uparams_notin g_uparams_b nb_new_cxt_sub (inst_uparams n).
+    isup_notinP l_uparams_b n ->
+    isup_notin g_uparams_b nb_new_cxt_sub (inst_uparams n).
   Proof.
-    intros n. unfold ind_sp_uparams_notinP, andP, ind_notinP, sp_uparams_notinP.
+    intros n. unfold isup_notinP, andP, ind_notinP, sp_uparams_notinP.
     intros x%andb_prop; destruct x as [notInd notSpUparams].
     destruct (Nat.lt_ge_cases n nb_l_uparams) as [nleb | nlt].
     - unfold inst_uparams.
       rewrite negb_true_iff in notSpUparams. revert notSpUparams.
-      apply (All2_nth (fun x y => y.2 = false -> ind_sp_uparams_notin g_uparams_b nb_new_cxt_sub x)).
+      apply (All2_nth (fun x y => y.2 = false -> isup_notin g_uparams_b nb_new_cxt_sub x)).
       1: cbn_length; rewrite size_inst_uparams //.
       apply All2_map_left. apply pos_inst_to_term.
     - apply leb_correct in nlt. rewrite nlt in notInd. inversion notInd.
   Qed.
 
   Definition inst_preserve_not (k : nat) t :
-    ind_sp_uparams_notin l_uparams_b k t ->
-    ind_sp_uparams_notin g_uparams_b (nb_new_cxt_sub + k) t.[up k inst_uparams].
+    isup_notin l_uparams_b k t ->
+    isup_notin g_uparams_b (nb_new_cxt_sub + k) t.[up k inst_uparams].
   Proof.
     rewrite Nat.add_comm. apply on_free_vars_inst.
     intros n. rewrite <- shiftnP_add. apply on_free_vars_up.
@@ -536,15 +537,15 @@ Section NestedToMutualInd.
 
   Definition inst_preserve_not_eq (k m : nat) t :
     m = nb_new_cxt_sub + k ->
-    ind_sp_uparams_notin l_uparams_b k t ->
-    ind_sp_uparams_notin g_uparams_b m t.[up k inst_uparams].
+    isup_notin l_uparams_b k t ->
+    isup_notin g_uparams_b m t.[up k inst_uparams].
   Proof.
     intros ->; apply inst_preserve_not.
   Qed.
 
   Definition All_notin k l :
-    All (ind_sp_uparams_notin l_uparams_b k) l ->
-    All (ind_sp_uparams_notin g_uparams_b (nb_new_cxt_sub + k))
+    All (isup_notin l_uparams_b k) l ->
+    All (isup_notin g_uparams_b (nb_new_cxt_sub + k))
             (map (fun t => t.[up k inst_uparams]) l).
   Proof.
     intros H; apply All_map, (All_impl H), inst_preserve_not.
@@ -552,15 +553,15 @@ Section NestedToMutualInd.
 
   Definition All_notin_eq k m l :
   m = nb_new_cxt_sub + k ->
-  All (ind_sp_uparams_notin l_uparams_b k) l ->
-  All (ind_sp_uparams_notin g_uparams_b m) (map (fun t => t.[up k inst_uparams]) l).
+  All (isup_notin l_uparams_b k) l ->
+  All (isup_notin g_uparams_b m) (map (fun t => t.[up k inst_uparams]) l).
   Proof.
     intros ->; apply All_notin.
   Qed.
 
   Definition Alli_notin l k :
-  Alli (ind_sp_uparams_notin l_uparams_b) k l ->
-  Alli (ind_sp_uparams_notin g_uparams_b) (nb_new_cxt_sub + k)
+  Alli (isup_notin l_uparams_b) k l ->
+  Alli (isup_notin g_uparams_b) (nb_new_cxt_sub + k)
           (mapi_rec (fun i t => t.[up i inst_uparams]) l k).
   Proof.
     intros X; eapply Alli_mapi_rec; tea; cbn.
@@ -569,8 +570,8 @@ Section NestedToMutualInd.
 
   Definition Alli_notin_eq l k m :
   m = (nb_new_cxt_sub + k) ->
-  Alli (ind_sp_uparams_notin l_uparams_b) k l ->
-  Alli (ind_sp_uparams_notin g_uparams_b) m
+  Alli (isup_notin l_uparams_b) k l ->
+  Alli (isup_notin g_uparams_b) m
           (mapi_rec (fun i t => t.[up i inst_uparams]) l k).
   Proof.
     intros ->. apply Alli_notin.
@@ -589,46 +590,46 @@ Section NestedToMutualInd.
     rewrite shiftnP_add. apply_eq H. do 2 f_equal. lia.
   Qed.
 
-  Definition ind_sp_uparams_notin_subst up k i s :
+  Definition isup_notin_subst up k i s :
     forall (t : term),
-    All (ind_sp_uparams_notin up k) s ->
-    ind_sp_uparams_notin up (k + i + #|s|) t ->
-    ind_sp_uparams_notin up (k + i) (subst s i t).
+    All (isup_notin up k) s ->
+    isup_notin up (k + i + #|s|) t ->
+    isup_notin up (k + i) (subst s i t).
   Proof.
     intros; apply on_free_vars_subst => //.
   Qed.
 
-  Definition ind_sp_uparams_notin_subst_eq up k i s m n :
+  Definition isup_notin_subst_eq up k i s m n :
     forall (t : term),
     m = k + i + #|s| ->
     n = k + i ->
-    All (ind_sp_uparams_notin up k) s ->
-    ind_sp_uparams_notin up m t ->
-    ind_sp_uparams_notin up n (subst s i t).
+    All (isup_notin up k) s ->
+    isup_notin up m t ->
+    isup_notin up n (subst s i t).
   Proof.
     intros t -> ->; apply on_free_vars_subst => //.
   Qed.
 
-  Definition ind_sp_uparams_notin_subst_rev up k i s :
+  Definition isup_notin_subst_rev up k i s :
   forall (t : term),
-  All (ind_sp_uparams_notin up k) s ->
-  ind_sp_uparams_notin up (k + i + #|s|) t ->
-  ind_sp_uparams_notin up (k + i) (subst (List.rev s) i t).
+  All (isup_notin up k) s ->
+  isup_notin up (k + i + #|s|) t ->
+  isup_notin up (k + i) (subst (List.rev s) i t).
   Proof.
-    intros. apply ind_sp_uparams_notin_subst => //.
+    intros. apply isup_notin_subst => //.
     - apply All_rev => //.
     - now rewrite List.length_rev.
   Qed.
 
-  Definition ind_sp_uparams_notin_subst_rev_eq up k i s m n :
+  Definition isup_notin_subst_rev_eq up k i s m n :
     forall (t : term),
     m = k + i + #|s| ->
     n = k + i ->
-    All (ind_sp_uparams_notin up k) s ->
-    ind_sp_uparams_notin up m t ->
-    ind_sp_uparams_notin up n (subst (List.rev s) i t).
+    All (isup_notin up k) s ->
+    isup_notin up m t ->
+    isup_notin up n (subst (List.rev s) i t).
   Proof.
-    intros t -> ->; apply ind_sp_uparams_notin_subst_rev.
+    intros t -> ->; apply isup_notin_subst_rev.
   Qed.
 
 
@@ -665,6 +666,17 @@ Section NestedToMutualInd.
         V2: add by hand it in the pos condition, should work but v1 would be better
 
       V1 should be true but hard to prove => This uses V2.
+
+      How to make this work => precise conditions ???
+      1. ↓↓g_args ,,, ↓g_largs ,,,  (↓σ)(l_nuparams ,,, indices)
+        - rc_notin (filter check_lax = false) g_args
+        - rc_notin g_largs
+        - You need for (↓σ) not add rc => if isup_notin -> rc_notin after
+          -> rc_notin llargs / args
+      2. Properties must be preserved, should be ok
+      3. Args you create still without rc => conditions
+
+
 
     This also forces us to add:
 
@@ -720,13 +732,13 @@ Section NestedToMutualInd.
     + eapply All_telescope_map.
       - intros ? ? X; apply pos_arg_is_free. cbn_length. exact X.
       - apply All_telescope_to_Alli with
-              (P := (fun n (x : term) => ind_sp_uparams_notin g_uparams_b n x))
+              (P := (fun n (x : term) => isup_notin g_uparams_b n x))
               (n := nb_g_nuparams + nb_g_args_no_rc) => //.
         apply pos_g_largs_no_rc.
     + eapply All_telescope_map.
       - intros ? ? X; apply pos_arg_is_free; cbn_length; exact X.
       - apply All_telescope_to_Alli with
-              (P := (fun n (x : term) => ind_sp_uparams_notin g_uparams_b (n) x))
+              (P := (fun n (x : term) => isup_notin g_uparams_b (n) x))
               (n := nb_new_cxt_sub).
         eapply Alli_mapi; tea. cbn. intros. apply inst_preserve_not_eq => //.
   Qed.
@@ -764,19 +776,19 @@ Section NestedToMutualInd.
 
   Tactic Notation "solve_sub_uparams_largs" :=
     ( eapply Alli_mapi; only 1: eassumption;
-      intros j x; eapply ind_sp_uparams_notin_subst_rev_eq; tea; lia).
+      intros j x; eapply isup_notin_subst_rev_eq; tea; lia).
 
   Tactic Notation "solve_sub_uparams_args" :=
     ( eapply All_map, All_impl; only 1: eassumption;
-      intros x; eapply ind_sp_uparams_notin_subst_rev_eq; tea; lia).
+      intros x; eapply isup_notin_subst_rev_eq; tea; lia).
 
   Definition pos_sub_uparams Γ largs args (lax : bool) nb_binders (llargs : list term) (arg : argument)
     (* contet substitution *)
-    (pos_largs : Alli (ind_sp_uparams_notin g_uparams_b) (nb_g_nuparams + #|Γ| + nb_binders) largs)
-    (pos_args  : All  (ind_sp_uparams_notin g_uparams_b  (nb_g_nuparams + #|Γ| + nb_binders + #|largs|)) args)
+    (pos_largs : Alli (isup_notin g_uparams_b) (nb_g_nuparams + #|Γ| + nb_binders) largs)
+    (pos_args  : All  (isup_notin g_uparams_b  (nb_g_nuparams + #|Γ| + nb_binders + #|largs|)) args)
     (* arg to substitute by *)
     (fapp_arg : #|llargs| = #|args|)
-    (pos_llargs : Alli (ind_sp_uparams_notin g_uparams_b) (nb_g_nuparams + #|Γ| + nb_binders + #|largs|) llargs)
+    (pos_llargs : Alli (isup_notin g_uparams_b) (nb_g_nuparams + #|Γ| + nb_binders + #|largs|) llargs)
     (pos_arg : positive_argument nb_m_block g_uparams_b g_nuparams Γ
                   lax (nb_binders + #|largs| + #|llargs|) arg)
     :
@@ -787,12 +799,14 @@ Section NestedToMutualInd.
     induction pos_arg using positive_argument_rect' in Heqp |- *; cbn.
     all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
     try solve [apply Alli_app_inv; tea; solve_sub_uparams_largs | solve_sub_uparams_args].
-    + apply ind_sp_uparams_notin_tProd => //.
-      apply ind_sp_uparams_notin_mkApps => //.
-      eapply ind_sp_uparams_notin_tLambda_eq; tea. lia.
+    + apply isup_notin_tProd => //.
+      apply isup_notin_mkApps => //.
+      eapply isup_notin_tLambda_eq; tea. lia.
     + apply Alli_app_inv; tea. eapply (Alli_mapi isup_notin_largs).
-      intros j x; eapply ind_sp_uparams_notin_subst_rev_eq; tea; lia.
-    + admit.
+      intros j x; eapply isup_notin_subst_rev_eq; tea; lia.
+    + apply Alli_app_inv => //. admit. cbn.
+      eapply (Alli_mapi rc_notin_largs); cbn.
+      admit.
     + admit.
     + induction Ppos_nested; constructor. 2: apply IHPpos_nested.
       destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
@@ -874,7 +888,7 @@ Section NestedToMutualInd.
           replace (nb_new_cxt_sub + nb_l_nuparams + #|Γ| + nb_binders + #|largs| + n)
           with ((nb_l_nuparams + #|Γ| + nb_binders + #|largs|) + (nb_new_cxt_sub + n))
           by lia.
-          unfold ind_sp_uparams_notin.
+          unfold isup_notin.
           rewrite -shiftnP_add.
           rewrite -{1}(Nat.add_0_r (nb_l_nuparams + #|Γ| + nb_binders + #|largs|)).
           apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn. exact H.
@@ -902,7 +916,8 @@ Section NestedToMutualInd.
     + apply pos_arg_is_nested with (mdecl := mdecl); rewrite -> ? length_map in * => //.
       - apply Alli_notin_eq => //. solve_length.
       - apply All_notin_eq => //. solve_length.
-      - admit.
+      - eapply (Alli_mapi_rec rc_notin_largs). intros i t.
+        rewrite map_app. admit.
       - admit.
       - induction Ppos_nested; rewrite -> ? length_map in * ; constructor; only 2: apply IHPpos_nested.
         destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
@@ -977,11 +992,11 @@ Section NestedToMutualInd.
   |}.
 
   Definition ind_sp_up_impl_sp_up : forall (n : nat) (x : term),
-    ind_sp_uparams_notin g_uparams_b n x ->
+    isup_notin g_uparams_b n x ->
     sp_uparams_notin g_uparams_b n x.
   Proof.
     intros n x. apply on_free_vars_impl, shiftnP_impl.
-    unfold ind_sp_uparams_notinP; cbn.
+    unfold isup_notinP; cbn.
     intros i H%andb_prop; apply H.
   Qed.
 
