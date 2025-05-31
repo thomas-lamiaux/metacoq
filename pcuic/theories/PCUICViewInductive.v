@@ -548,10 +548,13 @@ Section PositiveIndBlock.
   - The indices do not mention the sp uparams. This restriction is needed to
     ensure that the associated mutual type is not inductive-inductive
   *)
+  Definition positive_indices indices : Type :=
+    Alli (isup_notin) #|nuparams| (map decl_type (List.rev indices)).
+
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
       All positive_constructor indb.(ind_ctors)
     (* To add to prevent inductive-inductive types *)
-    * Alli (isup_notin) #|nuparams| (map decl_type (List.rev indb.(ind_indices))).
+    * positive_indices indb.(ind_indices).
 
 End PositiveIndBlock.
 
