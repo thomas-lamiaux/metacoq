@@ -412,6 +412,51 @@ Definition shiftnP_impl_fct (p q : nat -> bool) f g:
 Proof.
 Admitted.
 
+(* Lemma for subst to move *)
+Definition on_free_vars_subst P t k i s :
+  All (on_free_vars (shiftnP k P)) s ->
+  on_free_vars (shiftnP (k + i + #|s|) P) t ->
+  on_free_vars (shiftnP (k + i) P) (subst s i t).
+Proof.
+  intros X%All_forallb H. rewrite Nat.add_comm. rewrite <- shiftnP_add.
+  rewrite -(substP_shiftnP_gen _ #|s|).
+  apply on_free_vars_subst_gen => //.
+  rewrite shiftnP_add. apply_eq H. do 2 f_equal. lia.
+Qed.
+
+Definition on_free_vars_subst_eq P k i s m n t :
+  m = k + i + #|s| ->
+  n = k + i ->
+  All (on_free_vars (shiftnP k P)) s ->
+  on_free_vars (shiftnP m P) t ->
+  on_free_vars (shiftnP n P) (subst s i t).
+Proof.
+  intros -> ->; apply on_free_vars_subst => //.
+Qed.
+
+Definition All_up_shift P n m l :
+  n = m ->
+  All (on_free_vars (shiftnP n P)) l ->
+  All (on_free_vars (shiftnP m P)) l.
+Proof.
+  intros -> X; exact X.
+Qed.
+
+Definition Alli_up_start {A} (P : nat -> A -> Type) n m l :
+  n = m ->
+  Alli P n l ->
+  Alli P m l.
+Proof.
+  intros -> X; exact X.
+Qed.
+
+Definition on_free_vars_up_shift P n m x :
+  n = m ->
+  on_free_vars (shiftnP n P) x ->
+  on_free_vars (shiftnP m P) x.
+Proof.
+  intros -> X; exact X.
+Qed.
 
 
 Definition unlift_lift p k t :

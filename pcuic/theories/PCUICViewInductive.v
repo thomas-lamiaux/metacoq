@@ -268,7 +268,14 @@ Section PositiveIndBlock.
     intros H. apply shiftnP_ltb. now apply Nat.ltb_lt.
   Qed.
 
-
+  Definition ind_sp_up_impl_sp_up n x :
+    isup_notin n x ->
+    sp_uparams_notin n x.
+  Proof.
+    apply on_free_vars_impl, shiftnP_impl.
+    unfold isup_notinP; cbn.
+    intros i H%andb_prop; apply H.
+  Qed.
 
   (* lemma for binders *)
   (* already existing ??? on_free_var directly *)
@@ -618,30 +625,6 @@ Proof.
   apply pos_idecl_inc.
 Qed.
 
-Definition All_eq_notin up n m l :
-  n = m ->
-  All (fun x => isup_notin up n x) l ->
-  All (fun x => isup_notin up m x) l.
-Proof.
-  intros -> X; exact X.
-Qed.
-
-Definition Alli_eq_notin up n m l :
-  n = m ->
-  Alli (fun n x => isup_notin up n x) n l ->
-  Alli (fun n x => isup_notin up n x) m l.
-Proof.
-  intros -> X; exact X.
-Qed.
-
-Definition eq_notin up n m x :
-  n = m ->
-  isup_notin up n x ->
-  isup_notin up m x.
-Proof.
-  intros -> X; exact X.
-Qed.
-
 (* false now ? must be set to false ? *)
 Definition pos_arg_notin_unfold {nb_block up nup Γ lax tm nb_binders} arg :
   positive_argument nb_block up nup Γ lax (#|tm| + nb_binders) arg ->
@@ -650,8 +633,8 @@ Proof.
   remember (#|tm| + nb_binders) as p eqn:Heqp.
   intros pos_arg. revert nb_binders Heqp. induction pos_arg using positive_argument_rect'.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
-       try solve [apply_eq isup_notin_largs; solve_length | eapply All_eq_notin; tea; solve_length].
-  + eapply eq_notin; tea; solve_length.
+       try solve [apply_eq isup_notin_largs; solve_length | eapply All_up_shift; tea; solve_length].
+  + eapply on_free_vars_up_shift; tea; solve_length.
   + admit.
   + admit.
   + clear rc_notin_instance.
@@ -668,8 +651,8 @@ Definition pos_arg_notin_fold {nb_block up nup Γ lax tm nb_binders} arg :
 Proof.
   intros pos_arg; induction pos_arg using positive_argument_rect'.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
-       try solve [apply_eq isup_notin_largs; solve_length | eapply All_eq_notin; tea; solve_length].
-  + eapply eq_notin; tea; solve_length.
+       try solve [apply_eq isup_notin_largs; solve_length | eapply All_up_shift; tea; solve_length].
+  + eapply on_free_vars_up_shift; tea; solve_length.
   + admit.
   + admit.
   + induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
