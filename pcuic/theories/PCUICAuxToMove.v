@@ -3,6 +3,13 @@ From Stdlib Require Import ssreflect ssrbool ssrfun Morphisms Setoid.
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.PCUIC Require Import PCUICAst.
 
+Ltac multi_eassumption :=
+  multimatch goal with
+  | [h : ?t |- _ ] => exact h
+  end.
+
+Ltac mtea := try multi_eassumption.
+
 Definition map_rev [A B : Type] (f : A -> B) (l : list A) :
   map f (List.rev l) = List.rev (map f l).
 Proof.
@@ -18,7 +25,10 @@ Definition Alli_rev (A : Type) (P : nat -> A -> Type) n (l : list A) :
 Proof.
 Admitted.
 
-Ltac cbn_length := repeat (rewrite ?length_app ?length_map ?List.length_rev ?length_rev ?mapi_length ?mapi_rec_length ?Nat.add_0_r);
+Ltac cbn_length := repeat (rewrite
+  ?length_app ?length_map ?List.length_rev ?repeat_length
+  ?length_rev ?mapi_length ?mapi_rec_length ?Nat.add_0_r
+);
 repeat (rewrite ?Nat.add_assoc).
 
 Tactic Notation "solve_length" := solve [cbn_length; lia].

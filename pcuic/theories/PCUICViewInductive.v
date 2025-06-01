@@ -343,7 +343,7 @@ Section PositiveIndBlock.
     := rc_notin_bool (map check_lax Γ).
 
   Definition rc_notin_argument_bool (lb : list bool) : nat -> argument -> bool :=
-    todo.
+    fun k arg => on_free_vars_argument (shiftnP k (notin_of_rev_list lb)) arg.
 
   Definition rc_notin_argument_bool_free lb n t :
     rc_notin_argument_bool lb n (arg_is_free t) = rc_notin_bool lb n t :=
@@ -386,6 +386,10 @@ Section PositiveIndBlock.
     Alli isup_notin (size_cxt + nb_binders) largs ->
     (* ind + sp_uparams ∉ args *)
     All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args ->
+    (* rc_notin ∉ largs args *)
+    Alli (rc_notin_bool Γ) (nb_binders) largs ->
+    (* ind + sp_uparams ∉ args *)
+    All ((rc_notin_bool Γ) (nb_binders + #|largs|)) inst_args ->
     (* -------------------------------------------------------------- *)
     lax |> nb_binders |arg+> arg_is_sp_uparam largs k inst_args
 
@@ -410,9 +414,9 @@ Section PositiveIndBlock.
     lookup_minductive E kname = Some mdecl ->
     pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
     (* no rc *)
-    Alli (rc_notin_bool Γ) 0 largs ->
-    All (fun p => Alli (rc_notin_bool Γ) #|largs| p.1
-                  * rc_notin_argument_bool Γ (#|largs| + #|p.1|) p.2)
+    Alli (rc_notin_bool Γ) nb_binders largs ->
+    All (fun p => Alli (rc_notin_bool Γ) (nb_binders + #|largs|) p.1
+                  * rc_notin_argument_bool Γ (nb_binders + #|largs| + #|p.1|) p.2)
         inst_uparams ->
     (* inst_uparams are positive *)
     All2 (fun x y =>
@@ -450,9 +454,12 @@ Section PositiveIndBlock.
         (is_sp : nth k (map snd (List.rev uparams_b)) false)
         (fapp : nth k (List.rev uparams_nb_args) 0 = #|inst_args|)
         (isup_notin_largs : Alli isup_notin (size_cxt + nb_binders) largs)
-        (isup_notin_args : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args),
+        (isup_notin_args : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args)
+        (rc_notin_largs : Alli (rc_notin_bool Γ) (nb_binders) largs)
+        (rc_notin_args : All ((rc_notin_bool Γ) (nb_binders + #|largs|)) inst_args),
         (* ------------------------ *)
-        P (pos_arg_is_sp_uparams lax nb_binders largs k inst_args e pos_k is_sp fapp isup_notin_largs isup_notin_args)
+        P (pos_arg_is_sp_uparams lax nb_binders largs k inst_args e pos_k is_sp fapp
+            isup_notin_largs isup_notin_args rc_notin_largs rc_notin_args)
       )
     (P_arg_is_ind :
         forall lax nb_binders (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
@@ -472,9 +479,9 @@ Section PositiveIndBlock.
         (isup_notin_instance : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices)
         (ind_env_defined : lookup_minductive E kname = Some mdecl)
         (ind_pos_defined : pos_ind < #|PCUICEnvironment.ind_bodies mdecl|)
-        (rc_notin_largs : Alli (rc_notin_bool Γ) 0 largs)
-        (rc_notin_instance : All (fun p => Alli (rc_notin_bool Γ) #|largs| p.1
-                             * rc_notin_argument_bool Γ (#|largs| + #|p.1|) p.2) inst_uparams)
+        (rc_notin_largs : Alli (rc_notin_bool Γ) nb_binders largs)
+        (rc_notin_instance : All (fun p => Alli (rc_notin_bool Γ) (nb_binders + #|largs|) p.1
+                             * rc_notin_argument_bool Γ (nb_binders + #|largs| + #|p.1|) p.2) inst_uparams)
         (pos_nested :
             All2 (fun (x : list term × argument) (y : context_decl × bool) =>
               (#|x.1| = cdecl_to_arity y.1
@@ -519,10 +526,24 @@ Section PositiveIndBlock.
 
   End PosArg.
 
-  Definition positive_argument_increase1 {l b nb_binders arg} :
-    positive_argument (repeat false #|l|) b nb_binders arg ->
-    positive_argument l b nb_binders arg.
+  Definition positive_argument_increase1 {l l' b nb_binders arg} :
+    All2 (fun a b => is_true (~~ a) -> is_true (~~ b)) l l' ->
+    positive_argument l b nb_binders arg ->
+    positive_argument l' b nb_binders arg.
   Proof.
+  intros imp_ll' pos_arg. induction pos_arg using positive_argument_rect'.
+  + admit.
+  + constructor => //.
+    - admit.
+    - admit.
+    - admit.
+    - eapply (All_impl rc_notin_args). unfold rc_notin_bool.
+      intros t. eapply on_free_vars_impl, shiftnP_impl.
+      intros i. unfold notin_of_rev_list.
+      rewrite -!(map_nth negb). intros H.
+      admit.
+  + admit.
+  + admit.
   Admitted.
 
   Definition positive_argument_increase2 {l b nb_binders arg} :
@@ -626,15 +647,17 @@ Proof.
 Qed.
 
 (* false now ? must be set to false ? *)
-Definition pos_arg_notin_unfold {nb_block up nup Γ lax tm nb_binders} arg :
+Definition pos_arg_notin_unfold {A} {nb_block up nup Γ lax nb_binders} {tm : list A} arg :
   positive_argument nb_block up nup Γ lax (#|tm| + nb_binders) arg ->
-  positive_argument nb_block up nup (Γ ++ map check_lax tm) lax nb_binders arg.
+  positive_argument nb_block up nup (Γ ++ repeat false #|tm|) lax nb_binders arg.
 Proof.
   remember (#|tm| + nb_binders) as p eqn:Heqp.
   intros pos_arg. revert nb_binders Heqp. induction pos_arg using positive_argument_rect'.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
        try solve [apply_eq isup_notin_largs; solve_length | eapply All_up_shift; tea; solve_length].
   + eapply on_free_vars_up_shift; tea; solve_length.
+  + admit.
+  + admit.
   + admit.
   + admit.
   + clear rc_notin_instance.
@@ -653,6 +676,8 @@ Proof.
   all: (ltac2:(nconstructor 4)); cbn_length => //; tea;
        try solve [apply_eq isup_notin_largs; solve_length | eapply All_up_shift; tea; solve_length].
   + eapply on_free_vars_up_shift; tea; solve_length.
+  + admit.
+  + admit.
   + admit.
   + admit.
   + induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
@@ -680,11 +705,11 @@ Proof.
 Qed.
 
 Tactic Notation "solve_Alli" :=
-  eapply Alli_mapi; only 1 : tea; intros i t;
+  eapply Alli_mapi; mtea; intros i t;
   eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
 
 Tactic Notation "solve_All" :=
-  eapply All_map, All_impl; only 1: tea ; cbn; cbn_length; intros t;
+  eapply All_map, All_impl; mtea; cbn; cbn_length; intros t;
   eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
 
 Definition pos_lift_argument {nb_block up nup Γ1 Γ2 lax nb_binders} arg p n k :
@@ -694,10 +719,10 @@ Definition pos_lift_argument {nb_block up nup Γ1 Γ2 lax nb_binders} arg p n k 
 Proof.
   intro pos_arg. revert k.
   induction pos_arg using positive_argument_rect'; intros k0 ->.
-  all: (ltac2:(nconstructor 4)); cbn_length => //; tea; try solve [solve_Alli | solve_All].
-  + eapply on_free_vars_lift_eq; tea; cbn_length; reflexivity || lia.
-  + eapply Alli_mapi; only 1 : apply isup_notin_largs; intros i t;
-    eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
+  all: (ltac2:(nconstructor 4)); cbn_length => //; mtea; try solve [solve_Alli | solve_All].
+  + eapply on_free_vars_lift_eq; mtea; cbn_length; reflexivity || lia.
+  + admit.
+  + admit.
   + admit.
   + admit.
   + fold argument_mapi.

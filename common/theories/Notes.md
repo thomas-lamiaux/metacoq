@@ -5,6 +5,15 @@
 
 # Notes ajout condition
 
+1. is check_lax arg = true -> rc_notin ok ?
+2. Do I really needs to extra-conditions ?
+3. What about cstr_extra_args needing to be false ?
+4. Prove the subst lemma ?
+
+
+
+
+
 -> Pbl nom dans le fichier => wrap in a module ???
   => Section strengthening => "Prop are preserved"
   => Section with the proofs
