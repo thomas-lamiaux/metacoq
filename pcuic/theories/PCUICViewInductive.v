@@ -420,7 +420,7 @@ Section PositiveIndBlock.
         inst_uparams ->
     (* inst_uparams are positive *)
     All2 (fun x y =>
-      (* fully applied ensured by typing*)
+      (* fully applied ensured by typing *)
       (#|x.1| = cdecl_to_arity y.1)
       (* llargs are free *)
       * Alli (isup_notin) (size_cxt + nb_binders + #|largs|) x.1

@@ -46,56 +46,66 @@ Definition on_free_vars_argument_subst_eq P k i s m n t :
 Proof.
 Admitted.
 
-  Definition rc_notin_decrease {l l' nb_binders t} :
-    All2 (fun a b => is_true (~~ a) -> is_true (~~ b)) l l' ->
-    rc_notin_bool l  nb_binders t ->
-    rc_notin_bool l' nb_binders t.
-  Proof.
-    unfold rc_notin_bool, notin_of_rev_list.
-    intros H. eapply on_free_vars_impl, shiftnP_impl.
-    unfold is_true.
-    induction H => //=. intros i.
-    assert (Hll' : #|l| = #|l'|) by (eapply All2_length; tea).
-    cbn in Hll'. unfold is_true.
-    destruct (Nat.ltb_spec i #|l|).
-    + rewrite !app_nth1; try solve_length. eauto.
-    + destruct (Nat.ltb_spec i (S #|l|)).
-      - assert (i = #|List.rev l|) as -> by solve_length.
-        assert (#|List.rev l| = #|List.rev l'|) as Hll'Rev by solve_length.
-        rewrite {2}Hll'Rev.
-        rewrite !nth_middle. done.
-      - rewrite !nth_overflow; try cbn_length; cbn; lia.
-  Qed.
+Definition rc_notin_decrease {l l' nb_binders t} :
+  All2 (fun a b => is_true (~~ a) -> is_true (~~ b)) l l' ->
+  rc_notin_bool l  nb_binders t ->
+  rc_notin_bool l' nb_binders t.
+Proof.
+  unfold rc_notin_bool, notin_of_rev_list.
+  intros H. eapply on_free_vars_impl, shiftnP_impl.
+  unfold is_true.
+  induction H => //=. intros i.
+  assert (Hll' : #|l| = #|l'|) by (eapply All2_length; tea).
+  cbn in Hll'. unfold is_true.
+  destruct (Nat.ltb_spec i #|l|).
+  + rewrite !app_nth1; try solve_length. eauto.
+  + destruct (Nat.ltb_spec i (S #|l|)).
+    - assert (i = #|List.rev l|) as -> by solve_length.
+      assert (#|List.rev l| = #|List.rev l'|) as Hll'Rev by solve_length.
+      rewrite {2}Hll'Rev.
+      rewrite !nth_middle. done.
+    - rewrite !nth_overflow; try cbn_length; cbn; lia.
+Qed.
 
-  Definition rc_notin_false_left1 {n l nb_binders t} :
-    rc_notin_bool l nb_binders t ->
-    rc_notin_bool (repeat false n ++ l) nb_binders t.
-  Proof.
-    unfold rc_notin_bool, notin_of_rev_list.
-    eapply on_free_vars_impl, shiftnP_impl.
-    unfold is_true, shiftnP.
-    intros i. rewrite !negb_true_iff. rewrite List.rev_app_distr.
-    destruct (Nat.ltb_spec i #|List.rev l|) => //=.
-    + rewrite app_nth1 => //.
-    + intros. rewrite app_nth2 => //.
-      rewrite rev_repeat. apply nth_repeat.
-  Qed.
+Definition on_free_vars_xpredT {n t} : on_free_vars (shiftnP n xpredT) t.
+Proof.
+  rewrite shiftnP_xpredT.
+Admitted.
 
-  Definition rc_notin_false_left2 {n l nb_binders t} :
-    rc_notin_bool (repeat false n ++ l) nb_binders t ->
-    rc_notin_bool l nb_binders t.
-  Proof.
-    unfold rc_notin_bool, notin_of_rev_list.
-    eapply on_free_vars_impl, shiftnP_impl.
-    unfold is_true, shiftnP.
-    intros i. rewrite !negb_true_iff. rewrite List.rev_app_distr.
-    destruct (Nat.ltb_spec i #|List.rev l|) => //=.
-    + rewrite app_nth1 => //.
-    + intros. rewrite nth_overflow => //.
-  Qed.
+Definition rc_notin_false {n nb_binders t} :
+  rc_notin_bool (repeat false n) nb_binders t.
+Proof.
+  unfold rc_notin_bool, notin_of_rev_list.
+  eapply on_free_vars_impl; only 2: apply (@on_free_vars_xpredT nb_binders).
+  eapply shiftnP_impl. intros.
+  rewrite -map_nth map_rev map_repeat rev_repeat nth_repeat.
+  done.
+Qed.
 
+Definition shiftnP_impl2 (p q r : nat -> bool) :
+  (forall i, p i -> q i -> r i) ->
+  forall n i, shiftnP n p i -> shiftnP n q i -> shiftnP n r i.
+Proof.
+Admitted.
 
-Definition rc_notin_false Γ arg i t :
+Definition rc_notin_app {l1 l2 n t} :
+  rc_notin_bool l1 (#|l2| + n) t ->
+  rc_notin_bool l2 n t ->
+  rc_notin_bool (l1 ++ l2) n t.
+Proof.
+  unfold rc_notin_bool, notin_of_rev_list.
+  eapply on_free_vars_impl2.
+  intros i.
+  rewrite Nat.add_comm -shiftnP_add.
+  eapply shiftnP_impl2; clear i; unfold shiftnP.
+  intros i rc_notin_l1 rc_notin_l2.
+  rewrite rev_app_distr. unfold shiftnP in rc_notin_l1.
+  destruct (Nat.ltb_spec i #|l2|) => //=; cbn in *.
+  - rewrite -> app_nth1 by solve_length. done.
+  - rewrite -> app_nth2 by solve_length. cbn_length. done.
+Qed.
+
+Definition rc_notin_lax_false Γ arg i t :
   check_lax arg = false ->
   rc_notin (Γ ++ [arg]) i t = rc_notin Γ (i + 1) t.
 Proof.
@@ -110,7 +120,7 @@ Qed.
 Definition shiftnPneg (k : nat) (p : nat -> bool) (i : nat) :=
   if i <? k then false else p (i - k).
 
-Definition rc_notin_true Γ arg i t :
+Definition rc_notin_lax_true Γ arg i t :
   check_lax arg = true ->
   rc_notin (Γ ++ [arg]) i t = on_free_vars (shiftnP i (shiftnPneg 1 (notin_of_rev_list (map check_lax Γ)))) t.
 Proof.
@@ -179,7 +189,7 @@ Section StrengthArg.
     (* branch true => arg is removed *)
     + repeat split => //.
       cbn_length; cbn. intros P k t rc_notin_t isup_notin_t.
-      rewrite rc_notin_true in rc_notin_t => //.
+      rewrite rc_notin_lax_true in rc_notin_t => //.
       rewrite -> (unlift_lift 1 k t).
       2: {
         eapply on_free_vars_impl; only 2: apply rc_notin_t.
