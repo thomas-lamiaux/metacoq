@@ -37,6 +37,11 @@ Indices :
 
 *)
 
+Definition map_xpred0 {A} (l : list A) : map xpred0 l = repeat false #|l|.
+  Proof.
+    induction l; cbn; f_equal; eauto.
+  Qed.
+
 Definition on_free_vars_argument_subst_eq P k i s m n t :
   m = k + i + #|s| ->
   n = k + i ->
@@ -711,14 +716,6 @@ on_free_vars (rc_notinP (map check_lax Γ))
   Proof.
   Admitted.
 
-  Definition rc_notin_g_args_no_rc :
-    All_telescope (fun Γ arg => rc_notin_argument_bool (map check_lax Γ) 0 arg) g_args_no_rc.
-  Proof.
-    destruct (pos_remove_rc _ _ _ _ pos_g_args) as [[pos_oargs pos_nargs] pos_rename].
-  Admitted.
-
-
-
   (* 4. Update instantiation and properties *)
   Definition g_largs_no_rc : list term :=
     mapi (rename rename_no_rc) g_largs.
@@ -907,17 +904,42 @@ on_free_vars (rc_notinP (map check_lax Γ))
     ++ map arg_is_free (mapi_rec (fun i t => t.[up i inst_uparams_no_rc])
         (terms_of_cxt l_nuparams) 0).
 
+  Definition cstr_extra_args_lax_false :
+    map check_lax cstr_extra_args = repeat false #|cstr_extra_args|.
+  Proof.
+    unfold cstr_extra_args; cbn_length.
+    rewrite !repeat_app !map_app !map_map !map_xpred0 !app_assoc; cbn.
+    cbn_length; repeat f_equal => //.
+    rewrite -map_xpred0.
+    eapply All_map_eq. eapply g_args_no_rc_check_lax.
+  Qed.
+
+  Definition All_telescope_rc_notin_lax_false l :
+    map check_lax l = repeat false #|l| ->
+    All_telescope (fun Γ arg => ~~ check_lax arg -> rc_notin_argument_bool (map check_lax Γ) 0 arg)
+    l.
+  Proof.
+    induction l; cbn. constructor.
+    intros [= lax_a lax_l]. change (a::l) with ([a] ++ l).
+    apply All_telescope_app_inv.
+    - apply All_telescope_singleton.
+      change (map check_lax _) with (repeat false 0).
+      intros. apply rc_notin_argument_false.
+    - eapply All_telescope_impl. 1: eapply IHl; done. cbn.
+      intros Γ arg rc_notin_arg lax_arg. rewrite lax_a.
+      change (false :: _) with (repeat false 1 ++ map check_lax Γ).
+      apply rc_notin_argument_app.
+      * apply rc_notin_argument_false.
+      * apply rc_notin_arg. done.
+  Qed.
+
   Definition rc_notin_cstr_exta_args :
     All_telescope (fun Γ arg => ~~ check_lax arg -> rc_notin_argument_bool (map check_lax Γ) 0 arg)
     cstr_extra_args.
   Proof.
-    unfold cstr_extra_args. repeat apply All_telescope_app_inv.
-    - eapply (All_telescope_impl rc_notin_g_args_no_rc). done.
-    - eapply All_telescope_map. 2:admit.
-      intros t Γ rc_notin_x _. rewrite rc_notin_argument_bool_free.
-      admit.
-    - admit.
-  Admitted.
+    apply All_telescope_rc_notin_lax_false.
+    apply cstr_extra_args_lax_false.
+  Qed.
 
   Definition pos_cstr_extra_args :
     All_telescope (fun Γ => positive_argument nb_m_block g_uparams_b g_nuparams (map check_lax Γ) false 0) cstr_extra_args.
@@ -948,20 +970,7 @@ on_free_vars (rc_notinP (map check_lax Γ))
       eapply positive_argument_increase2.
   Qed.
 
-  Definition map_xpred0 {A} (l : list A) : map xpred0 l = repeat false #|l|.
-  Proof.
-    induction l; cbn; f_equal; eauto.
-  Qed.
 
-  Definition cstr_extra_args_lax_false :
-    map check_lax cstr_extra_args = repeat false #|cstr_extra_args|.
-  Proof.
-    unfold cstr_extra_args; cbn_length.
-    rewrite !repeat_app !map_app !map_map !map_xpred0 !app_assoc; cbn.
-    cbn_length; repeat f_equal => //.
-    rewrite -map_xpred0.
-    eapply All_map_eq. eapply g_args_no_rc_check_lax.
-  Qed.
 
 
 
