@@ -412,7 +412,7 @@ Section PositiveIndBlock.
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
     All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices ->
     (* declared mdecl + pos_ind *)
-    lookup_minductive E kname = Some mdecl ->positive_argument
+    lookup_minductive E kname = Some mdecl ->
     pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
     (* no rc *)
     Alli (rc_notin_bool Γ) nb_binders largs ->
@@ -426,7 +426,7 @@ Section PositiveIndBlock.
       (* llargs are free *)
       * Alli (isup_notin) (size_cxt + nb_binders + #|largs|) x.1
       (* args are pos lax or strict depending if you can nest or not *)
-      *  y.2 (nb_binders + #|largs| + #|x.1|) x.2
+      * positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2
     ) inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl))
     ->
     (* -------------------------------------------------------------- *)
@@ -434,6 +434,13 @@ Section PositiveIndBlock.
                               inst_uparams inst_nuparams_indices
 
   where "lax |> nb_binders |arg+> t " := (positive_argument lax nb_binders t) : type_scope.
+
+  Inductive All_param1 {A P} (HP : forall a, P a -> Type) : forall {l}, All P l -> Type :=
+  | All_nil_param1 : All_param1 HP ( @All_nil A P)
+  | All_cons_param1 : forall (x : A) (l : list A) ,
+                forall (px : P x), HP x px ->
+                forall (al : All P l), All_param1 HP al ->
+                All_param1 HP (All_cons px al).
 
   Inductive All2_param1 {A B R} (PR : forall a b, R a b -> Type) : forall {lA lB}, All2 R lA lB -> Type :=
   | All2_nil_param1 : All2_param1 PR ( @All2_nil A B R)

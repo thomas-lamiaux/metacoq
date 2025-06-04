@@ -46,10 +46,58 @@ Definition on_free_vars_argument_subst_eq P k i s m n t :
 Proof.
 Admitted.
 
-Definition on_free_vars_xpredT {n t} : on_free_vars (shiftnP n xpredT) t.
+Definition on_free_vars_triv {P t} :
+  (forall i, is_true (P i)) ->  on_free_vars P t.
 Proof.
-  rewrite shiftnP_xpredT.
 Admitted.
+
+Definition shiftnP_impl2 (p q r : nat -> bool) :
+  (forall i, p i -> q i -> r i) ->
+  forall n i, shiftnP n p i -> shiftnP n q i -> shiftnP n r i.
+Proof.
+Admitted.
+
+Definition on_free_vars_inst_up (P : nat -> bool) k m p t σ:
+  p + k <= m ->
+  (forall i, p <= i -> P i) ->
+  on_free_vars (shiftnP k P) t ->
+  on_free_vars (shiftnP k P) t.[up m σ].
+Proof.
+  intros Hlt cs ofr_t.
+  eapply on_free_vars_inst; tea.
+  rewrite <-(Arith_base.le_plus_minus_r_stt (k + p) m) by lia.
+  replace (k + p + (m - (k + p))) with (k + (p + (m - (k + p)))) by lia.
+  intros. rewrite -up_up. eapply on_free_vars_up; tea.
+  intros j ?.
+  unfold up.
+  destruct (Nat.leb_spec (p + (m - (k + p))) j); cbn => //.
+  rewrite -lift0_rename.
+  eapply on_free_vars_lift0.
+  eapply on_free_vars_triv.
+  unfold addnP. intros; cbn. apply cs. lia.
+Qed.
+
+Definition rc_notin_inst_up Γ k m t σ:
+  #|Γ| + k <= m ->
+  rc_notin Γ k t ->
+  rc_notin Γ k t.[up m σ].
+Proof.
+  unfold rc_notin, rc_notin_bool.
+  intros. eapply on_free_vars_inst_up; tea.
+  intros i Hi. unfold rc_notinP. rewrite -map_nth.
+  apply nth_overflow. solve_length.
+Qed.
+
+(* Definition rc_notin_argument_inst_up Γ k m t σ:
+  #|Γ| + k <= m ->
+  rc_notin_argument Γ k t ->
+  rc_notin_argument Γ k t.[up m σ].
+Proof.
+  unfold rc_notin, rc_notin_bool.
+  intros. eapply on_free_vars_inst_up; tea.
+  intros i Hi. unfold rc_notinP. rewrite -map_nth.
+  apply nth_overflow. solve_length.
+Qed. *)
 
 Definition rc_notin_lift0 {lb n t} :
   #|lb| <= n ->
@@ -57,8 +105,8 @@ Definition rc_notin_lift0 {lb n t} :
 Proof.
   unfold rc_notin_bool. intros H.
   eapply on_free_vars_lift0. rewrite shiftnP0.
-  eapply on_free_vars_impl; only 2: apply ( @on_free_vars_xpredT 0).
-  intros i _; cbn. unfold addnP. unfold rc_notinP.
+  eapply on_free_vars_triv.
+  intros; cbn. unfold addnP. unfold rc_notinP.
   rewrite -map_nth.
   eapply nth_overflow. cbn_length. lia.
 Qed.
@@ -84,15 +132,26 @@ Proof.
     - rewrite !nth_overflow; try cbn_length; cbn; lia.
 Qed.
 
+Definition rc_notin_argument_decrease {l l' nb_binders arg} :
+  All2 (fun a b => is_true (~~ a) -> is_true (~~ b)) l l' ->
+  rc_notin_argument_bool l  nb_binders arg ->
+  rc_notin_argument_bool l' nb_binders arg.
+Proof.
+Admitted.
+
 Definition rc_notin_false {n nb_binders t} :
   rc_notin_bool (repeat false n) nb_binders t.
 Proof.
-  unfold rc_notin_bool, rc_notinP.
-  eapply on_free_vars_impl; only 2: apply ( @on_free_vars_xpredT nb_binders).
-  eapply shiftnP_impl. intros.
+  unfold rc_notin_bool, rc_notinP. eapply on_free_vars_triv.
+  unfold shiftnP. intros.
   rewrite -map_nth map_rev map_repeat rev_repeat nth_repeat.
-  done.
+  cbn. destruct (Nat.ltb_spec i nb_binders) => //.
 Qed.
+
+Definition rc_notin_argument_false {n nb_binders t} :
+  rc_notin_argument_bool (repeat false n) nb_binders t.
+Proof.
+Admitted.
 
 Definition rc_notin_false_left {n l nb_binders t} :
   rc_notin_bool (repeat false n ++ l) nb_binders t =
@@ -106,12 +165,6 @@ Proof.
   + rewrite app_nth2. solve_length.
     rewrite map_repeat /= nth_repeat nth_overflow //=. solve_length.
 Qed.
-
-Definition shiftnP_impl2 (p q r : nat -> bool) :
-  (forall i, p i -> q i -> r i) ->
-  forall n i, shiftnP n p i -> shiftnP n q i -> shiftnP n r i.
-Proof.
-Admitted.
 
 Definition rc_notin_app {l1 l2 n t} :
   rc_notin_bool l1 (#|l2| + n) t ->
@@ -129,6 +182,13 @@ Proof.
   - rewrite -> app_nth1 by solve_length. done.
   - rewrite -> app_nth2 by solve_length. cbn_length. done.
 Qed.
+
+Definition rc_notin_argument_app {l1 l2 n arg} :
+  rc_notin_argument_bool l1 (#|l2| + n) arg ->
+  rc_notin_argument_bool l2 n arg ->
+  rc_notin_argument_bool (l1 ++ l2) n arg.
+Proof.
+Admitted.
 
 Definition rc_notin_lax_false Γ arg i t :
   check_lax arg = false ->
@@ -854,7 +914,9 @@ on_free_vars (rc_notinP (map check_lax Γ))
   Proof.
     unfold cstr_extra_args. repeat apply All_telescope_app_inv.
     - eapply (All_telescope_impl rc_notin_g_args_no_rc). done.
-    - admit.
+    - eapply All_telescope_map. 2:admit.
+      intros t Γ rc_notin_x _. rewrite rc_notin_argument_bool_free.
+      admit.
     - admit.
   Admitted.
 
@@ -1044,7 +1106,26 @@ on_free_vars (rc_notinP (map check_lax Γ))
       (cstr_extra_args ++ (mapi_rec specialize_argument Γ nb_l_nuparams))
       nb_binders (specialize_argument (nb_l_nuparams + #|Γ| + nb_binders) arg).
   Proof.
+    unfold negb, specialize_argument. intros H lax_spe_arg.
+    destruct arg => //=.
+    2: destruct (nth k l_inst_uparams_no_rc) as [llargs []]; cbn in * => //=.
+    all: fold specialize_argument in *.
+    all: rewrite rc_notin_argument_free.
+    all: unfold rc_notin; rewrite map_app cstr_extra_args_lax_false rc_notin_false_left.
+    all: eapply (rc_notin_decrease (check_lax_specialize_argument _ _)).
+    all: unfold rc_notin_bool.
+    all: cbn in *.
+    - eapply rc_notin_inst_up => //. lia. rewrite rc_notin_argument_free in H. apply H => //.
+    - admit.
   Admitted.
+
+Definition rc_notin_argument_specialize_up lb k m arg :
+  #|lb| + k <= m ->
+  rc_notin_argument_bool lb k arg ->
+  rc_notin_argument_bool lb k
+  (specialize_argument m arg).
+Proof.
+Admitted.
 
   Definition pos_specialize_argument Γ lax nb_binders arg :
     positive_argument nb_l_block l_uparams_b l_nuparams (map check_lax Γ) lax nb_binders arg ->
@@ -1063,20 +1144,7 @@ on_free_vars (rc_notinP (map check_lax Γ))
         rewrite map_app. eapply rc_notin_app; cbn_length.
         * rewrite cstr_extra_args_lax_false. apply rc_notin_false.
         * eapply (rc_notin_decrease (check_lax_specialize_argument Γ _)).
-        (* extra-argument + Γ *)
-          eapply on_free_vars_inst; tea. intros j rc_notin_j.
-          replace (i + nb_l_nuparams + #|Γ| + nb_binders)
-          with ((i + nb_binders) + (nb_l_nuparams + #|Γ|))
-          by lia.
-          rewrite -up_up.
-          unfold rc_notin_bool.
-          eapply on_free_vars_up; tea.
-          unfold up.
-          intros i0 rc_notin_i0.
-          destruct (Nat.leb_spec (nb_l_nuparams + #|Γ|) i0); cbn => //.
-          rewrite -lift0_rename.
-          rewrite -(shiftnP0 (rc_notinP _)).
-          eapply rc_notin_lift0. solve_length.
+          eapply rc_notin_inst_up; tea. lia.
       - apply Alli_inst_no_rc_isup_notin => //. lia.
       - apply All_inst_no_rc_isup_notin => //. lia.
       - rewrite - fapp -Hfst. symmetry.
@@ -1094,7 +1162,10 @@ on_free_vars (rc_notinP (map check_lax Γ))
           rewrite -{1}(Nat.add_0_r (nb_l_nuparams + #|Γ| + nb_binders + #|largs|)).
           apply on_free_vars_lift_impl. rewrite shiftnP_add; cbn. exact H.
       - apply All_map, (All_impl rc_notin_args). intros t rc_notin_t.
-        admit.
+        rewrite map_app. eapply rc_notin_app; cbn_length.
+        * rewrite cstr_extra_args_lax_false. apply rc_notin_false.
+        * eapply (rc_notin_decrease (check_lax_specialize_argument Γ _)).
+          eapply rc_notin_inst_up; tea. lia.
       - apply pos_arg_inc => //.
         assert (MX : positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args_no_rc) lax (nb_g_largs + #|llargs|) arg_to_sub).
         1: { rewrite -Hfst -Hsnd. apply All_nth => //. 1: rewrite size_l_inst_uparams_no_rc; lia.
@@ -1121,17 +1192,28 @@ on_free_vars (rc_notinP (map check_lax Γ))
       - apply Alli_inst_no_rc_isup_notin => //. solve_length.
       - apply All_inst_no_rc_isup_notin => //. solve_length.
       - eapply (Alli_mapi_rec rc_notin_largs). intros i t rc_notin_t.
-        admit.
+        rewrite map_app. eapply rc_notin_app; cbn_length.
+        * rewrite cstr_extra_args_lax_false. apply rc_notin_false.
+        * eapply (rc_notin_decrease (check_lax_specialize_argument Γ _)).
+          eapply rc_notin_inst_up; tea. lia.
       - apply All_map, (All_impl rc_notin_instance).
-        intros [llargs arg] [rc_notin_llargs rc_notin_arg]; cbn; cbn_length; split.
-        (* induction or sth ??? *)
-        all: admit.
-      - induction Ppos_nested; rewrite -> ? length_map in * ; constructor; only 2: apply IHPpos_nested.
+        intros [llargs arg] [rc_notin_llargs rc_notin_arg]; cbn in *; cbn_length; split.
+        * apply (Alli_mapi_rec rc_notin_llargs). intros j t rc_notin_t.
+          rewrite map_app. eapply rc_notin_app; cbn_length.
+          ** rewrite cstr_extra_args_lax_false. apply rc_notin_false.
+          ** eapply (rc_notin_decrease (check_lax_specialize_argument Γ _)).
+             eapply rc_notin_inst_up; tea. lia. rewrite Nat.add_assoc in rc_notin_t. done.
+        * rewrite map_app. eapply rc_notin_argument_app; cbn_length.
+          ** rewrite cstr_extra_args_lax_false. apply rc_notin_argument_false.
+          ** eapply (rc_notin_argument_decrease (check_lax_specialize_argument Γ _)).
+            eapply rc_notin_argument_specialize_up; tea. solve_length.
+      - clear rc_notin_instance.
+        induction Ppos_nested; rewrite -> ? length_map in * ; constructor; only 2: apply IHPpos_nested.
         destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
         cbn_length; repeat split => //.
         * apply Alli_inst_no_rc_isup_notin => //. lia.
         * apply_eq p. f_equal. lia.
-  Admitted.
+  Qed.
 
 
 
@@ -1180,7 +1262,8 @@ on_free_vars (rc_notinP (map check_lax Γ))
         split; [intros H | ].
         all: unfold mapi; rewrite !app_nil_r -!mapi_rec_add; fold specialize_argument;
              rewrite {1}Nat.add_0_r !Nat.add_assoc.
-        * apply rc_notin_specialize_argument; cbn_length => //. rewrite Nat.add_0_r in H. done.
+        * apply rc_notin_specialize_argument; cbn_length => //.
+          rewrite Nat.add_0_r in H. done.
         * apply pos_specialize_argument with (Γ := Γ) => //.
     + cbn_length. apply All_app_inv.
       - unfold tRels. apply All_rev_pointwise_map; cbn.
