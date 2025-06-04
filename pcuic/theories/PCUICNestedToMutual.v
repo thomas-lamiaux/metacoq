@@ -88,17 +88,6 @@ Proof.
   apply nth_overflow. solve_length.
 Qed.
 
-(* Definition rc_notin_argument_inst_up Γ k m t σ:
-  #|Γ| + k <= m ->
-  rc_notin_argument Γ k t ->
-  rc_notin_argument Γ k t.[up m σ].
-Proof.
-  unfold rc_notin, rc_notin_bool.
-  intros. eapply on_free_vars_inst_up; tea.
-  intros i Hi. unfold rc_notinP. rewrite -map_nth.
-  apply nth_overflow. solve_length.
-Qed. *)
-
 Definition rc_notin_lift0 {lb n t} :
   #|lb| <= n ->
   rc_notin_bool lb 0 (lift0 n t).
@@ -240,8 +229,8 @@ Section StrengthArg.
       (* renaming is well-defined *)
     * (forall P i t,
       rc_notin oargs i t ->
-      on_free_vars (shiftnP (#|nup| + #|oargs| + i) P) t ->
-      on_free_vars (shiftnP (#|nup| + #|nargs| + i) P) ((rename (shiftn i rename_no_rc) t))).
+      on_free_vars (shiftnP (#|oargs| + i) P) t ->
+      on_free_vars (shiftnP (#|nargs| + i) P) ((rename (shiftn i rename_no_rc) t))).
 
   Definition remove_rc_one (acc : StrAcc) arg :=
     if check_lax arg
@@ -303,19 +292,19 @@ Section StrengthArg.
           eapply shiftnP_impl_fct.
           unfold shiftnP; cbn. intros ?; rewrite Nat.sub_0_r //.
         * intros _.
-          replace (#|nup| + #|acc.1.1| + 1 + S k) with ((#|nup| + #|acc.1.1|) + (1 + S k)) by lia.
-          replace (#|nup| + #|acc.1.1| + S k) with ((#|nup| + #|acc.1.1|) + S k) by lia.
-          rewrite -shiftnP_add. rewrite -(shiftnP_add (_ + _) (S k)).
+          replace (#|acc.1.1| + 1 + S k) with ((#|acc.1.1|) + (1 + S k)) by lia.
+          rewrite -!shiftnP_add.
           (change j with ((fun (n : nat) => n) j)).
           eapply shiftnP_impl_fct.
           intros j2. unfold shiftnP, unlift_renaming.
           destruct (Nat.ltb_spec j2 (S k)); cbn.
           1: assert (j2 <=? k = true) as -> by lia; cbn; done.
-          destruct (Nat.leb_spec (j2 -1) k); cbn.
+          destruct (Nat.leb_spec (j2 - 1) k); cbn.
           1: done.
           destruct (Nat.leb_spec j2 (S k)); cbn.
           1: lia.
           replace (j2 - S (S k)) with (j2 -1 - S k) by lia.
+          destruct (Nat.leb_spec j2 0); cbn. lia.
           done.
     (* branch false => arg is keept *)
     + repeat split; cbn.
@@ -324,13 +313,18 @@ Section StrengthArg.
       - constructor => //.
         destruct arg; only 2-4: inversion lax_arg.
         cbn. constructor.
-        rewrite length_map. apply pos_rename_no_rc.
+        rewrite length_map. unfold isup_notin.
+        replace (#|nup| + #|acc.1.2| + 0) with (#|acc.1.2| + 0 + #|nup|) by lia.
+        rewrite -shiftnP_add. eapply pos_rename_no_rc.
         * rewrite (rc_notin_argument_bool_free) in rc_notin_arg.
           unfold rc_notin. by apply rc_notin_arg.
-        * inversion pos_arg. eapply on_free_vars_up_shift; tea. solve_length.
+        * inversion pos_arg. eapply on_free_vars_up_shift; tea. reflexivity.
+          rewrite shiftnP_add.
+          replace (#|acc.1.1| + 0 + #|nup|) with (#|nup| + #|map check_lax acc.1.1| + 0) by solve_length.
+          done.
       - cbn_length; cbn. intros P i t rc_notin_t isup_notin_t.
         rewrite shiftn_add.
-        replace (#|nup| + #|acc.1.2| + 1 + i) with (#|nup| + #|acc.1.2| + (i + 1)) by lia.
+        replace (#|acc.1.2| + 1 + i) with (#|acc.1.2| + (i + 1)) by lia.
         eapply pos_rename_no_rc.
         * rewrite -(rc_notin_lax_false _ arg) //.
         * eapply on_free_vars_up_shift; tea; lia.
@@ -700,7 +694,12 @@ on_free_vars (rc_notinP (map check_lax Γ))
                                       (rename rename_no_rc i t).
   Proof.
     destruct (pos_remove_rc _ _ _ _ pos_g_args) as [[pos_oargs pos_nargs] pos_rename].
-    intros. apply pos_rename; rewrite remove_rc_id_oargs //.
+    intros. unfold isup_notin.
+    replace (nb_g_nuparams + nb_g_args_no_rc + i) with ((nb_g_args_no_rc + i) + nb_g_nuparams) by lia.
+    rewrite -shiftnP_add. apply pos_rename. 1: rewrite remove_rc_id_oargs //.
+    rewrite shiftnP_add. rewrite remove_rc_id_oargs. cbn; cbn_length.
+    replace (nb_g_args + i + nb_g_nuparams) with (nb_g_nuparams + nb_g_args + i) by lia.
+    done.
   Qed.
 
   (* should follow *)
