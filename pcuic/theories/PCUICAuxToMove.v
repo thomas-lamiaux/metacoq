@@ -295,6 +295,17 @@ Proof.
     rewrite Nat.add_succ_r //.
 Qed.
 
+Definition All_telescope_prod {A} P Q (l : list A) :
+  All_telescope (fun Γ arg => P Γ arg) l ->
+  All_telescope (fun Γ arg => Q Γ arg) l ->
+  All_telescope (fun Γ arg => P Γ arg * Q Γ arg) l.
+Proof.
+  intros H H2. induction H; cbn.
+  1: constructor.
+  inversion H2. 1: { apply (f_equal ( @length A)) in H1. rewrite length_app in H1; cbn in H1. lia. }
+   apply app_inj_tail in H1 as []; subst. constructor; eauto.
+Qed.
+
 (* All2 *)
 Definition All2_impl2 {A B : Type} {P Q1 Q2} l l':
   All2 Q1 l l' -> All2 Q2 l l' ->

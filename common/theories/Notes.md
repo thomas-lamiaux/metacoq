@@ -9,11 +9,19 @@
 
     ↓↓g_args ,,, ↓g_largs ,,,  (↓σ)(l_nuparams ,,, indices)
 
+
+
     1. rc_notin args
     2. rc_notin largs
     3. σ must **not** well-formed, but its subtitution yes.
        As isup_notin (l_nuparams ,,, indices) => only care about not-isup
        (bit more flexible)
+
+  "INFORMAL ARGUMENT" => if RC ∈ t, and t : T => isup ∈ T
+
+    σ = σ1 ∪ σ2
+    σ1 = nest on => do not ask that isup ∉ T
+    σ2 = not nest on => ask isup ∉ T
 
     Addition of 2. and 3. to positivity forces us to prove it in
     1. sub_uprams:
@@ -84,3 +92,8 @@ Practical:
 -> Spe Arg:
   -> lift arg case of spec_arg is **more** involved
   -> need solve_length to link Γ to nΓ
+
+# Example thiago
+
+Foo :=
+| c : x, y : All foo (fun _ => True) [x,y] -> foo

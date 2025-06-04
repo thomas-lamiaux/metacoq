@@ -278,7 +278,7 @@ Section PositiveIndBlock.
   Qed.
 
   (* lemma for binders *)
-  (* already existing ??? on_free_var directly *)
+  (* already existing ??? on_free_vars directly *)
   Definition isup_notin_tProd k l t :
     Alli (isup_notin) k l ->
     isup_notin (k + #|l|) t ->
@@ -333,17 +333,18 @@ Section PositiveIndBlock.
 
 
   (* check there are no potential rc *)
-  Definition notin_of_rev_list (lb : list bool) : nat -> bool :=
+  Definition rc_notinP (lb : list bool) : nat -> bool :=
     (fun n => ~~ (nth n (List.rev lb) false)).
 
   Definition rc_notin_bool (lb : list bool) k : term -> bool :=
-    on_free_vars (shiftnP k (notin_of_rev_list lb)).
+    on_free_vars (shiftnP k (rc_notinP lb)).
 
   Definition rc_notin Γ : nat -> term -> bool
     := rc_notin_bool (map check_lax Γ).
 
+  (* for arguments *)
   Definition rc_notin_argument_bool (lb : list bool) : nat -> argument -> bool :=
-    fun k arg => on_free_vars_argument (shiftnP k (notin_of_rev_list lb)) arg.
+    fun k arg => on_free_vars_argument (shiftnP k (rc_notinP lb)) arg.
 
   Definition rc_notin_argument_bool_free lb n t :
     rc_notin_argument_bool lb n (arg_is_free t) = rc_notin_bool lb n t :=
@@ -411,7 +412,7 @@ Section PositiveIndBlock.
     (* ind + sp_uparams ∉ inst_nuparams_indices *)
     All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices ->
     (* declared mdecl + pos_ind *)
-    lookup_minductive E kname = Some mdecl ->
+    lookup_minductive E kname = Some mdecl ->positive_argument
     pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
     (* no rc *)
     Alli (rc_notin_bool Γ) nb_binders largs ->
@@ -425,7 +426,7 @@ Section PositiveIndBlock.
       (* llargs are free *)
       * Alli (isup_notin) (size_cxt + nb_binders + #|largs|) x.1
       (* args are pos lax or strict depending if you can nest or not *)
-      * positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2
+      *  y.2 (nb_binders + #|largs| + #|x.1|) x.2
     ) inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl))
     ->
     (* -------------------------------------------------------------- *)
@@ -539,7 +540,7 @@ Section PositiveIndBlock.
     - admit.
     - eapply (All_impl rc_notin_args). unfold rc_notin_bool.
       intros t. eapply on_free_vars_impl, shiftnP_impl.
-      intros i. unfold notin_of_rev_list.
+      intros i. unfold rc_notinP.
       rewrite -!(map_nth negb). intros H.
       admit.
   + admit.
@@ -560,14 +561,14 @@ Section PositiveIndBlock.
      1. All of its arguments are positive
      2. The return indices do not contain the inductives nor the sp_uparams
   *)
+  Definition PosArgBool lb arg :=
+    (~~ check_lax arg -> rc_notin_argument_bool lb 0 arg) *
+    positive_argument lb true 0 arg.
+
+  Definition PosArg Γ := PosArgBool (map check_lax Γ).
+
   Definition positive_constructor (ctor : constructor_body) : Type :=
-      All_telescope (fun Γ arg =>
-        (* rec call not in the arg *)
-        is_true (rc_notin_argument Γ 0 arg) *
-        (* (forall Ht : check_lax arg = false, is_true (rc_notin Γ 0 (strict_to_term arg Ht))) * *)
-        (* arg is positive *)
-        positive_argument (map check_lax Γ) true 0 arg)
-      ctor.(cstr_args)
+      All_telescope PosArg ctor.(cstr_args)
    * All (isup_notin (#|nuparams| + #|ctor.(cstr_args)|)) ctor.(cstr_indices).
 
 
