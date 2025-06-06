@@ -29,6 +29,12 @@ Import PCUICEnvironment.
 
 *)
 
+Definition Alli_cst {A} {P : A -> Type} {l} {m} n :
+  Alli (fun _ => P) m l -> Alli (fun _ => P) n l.
+Proof.
+  intros X; induction X in n |- *; constructor; eauto.
+Qed.
+
 Axiom todo_ : forall {A}, A.
 #[warn(note="TO IMPLEMENT")] Notation todo := todo_.
 
@@ -268,49 +274,7 @@ Section PositiveIndBlock.
     intros H. apply shiftnP_ltb. now apply Nat.ltb_lt.
   Qed.
 
-  Definition ind_sp_up_impl_sp_up n x :
-    isup_notin n x ->
-    sp_uparams_notin n x.
-  Proof.
-    apply on_free_vars_impl, shiftnP_impl.
-    unfold isup_notinP; cbn.
-    intros i H%andb_prop; apply H.
-  Qed.
 
-  (* lemma for binders *)
-  (* already existing ??? on_free_vars directly *)
-  Definition isup_notin_tProd k l t :
-    Alli (isup_notin) k l ->
-    isup_notin (k + #|l|) t ->
-    isup_notin k (it_tProd l t).
-  Proof.
-    todo " totod".
-  Qed.
-
-  Definition isup_notin_tLambda (k : nat) (l : list term) (t : term) :
-    Alli (isup_notin) k l ->
-    isup_notin (k + #|l|) t ->
-    isup_notin k (it_tLambda l t).
-  Proof.
-    todo " totod".
-  Qed.
-
-  Definition isup_notin_tLambda_eq k l t m :
-    m = k + #|l| ->
-    Alli (isup_notin) k l ->
-    isup_notin m t ->
-    isup_notin k (it_tLambda l t).
-  Proof.
-    todo " totod".
-  Qed.
-
-  Definition isup_notin_mkApps k u vs :
-    All (isup_notin k) vs ->
-    isup_notin k u ->
-    isup_notin k (mkApps u vs).
-  Proof.
-    todo " totod".
-  Qed.
 
   (* Positivity part *)
 
@@ -383,14 +347,17 @@ Section PositiveIndBlock.
     nth k (map snd (List.rev uparams_b)) false ->
     (* and fully applied *)
     nth k (List.rev uparams_nb_args) 0 = #|inst_args| ->
-    (* ind + sp_uparams ∉ largs *)
+    (* ind + sp_uparams ∉ largs + args *)
     Alli isup_notin (size_cxt + nb_binders) largs ->
-    (* ind + sp_uparams ∉ args *)
     All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args ->
-    (* rc_notin ∉ largs args *)
-    Alli (rc_notin_bool Γ) (nb_binders) largs ->
-    (* ind + sp_uparams ∉ args *)
-    All ((rc_notin_bool Γ) (nb_binders + #|largs|)) inst_args ->
+    (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
+      (* well-defined largs + args *)
+      Alli (fun i => on_free_vars xpredT) nb_binders largs ->
+      All (on_free_vars xpredT) inst_args ->
+      (* rc_notin ∉ largs + args *)
+      Alli (rc_notin_bool Γ) (nb_binders) largs ->
+      All ((rc_notin_bool Γ) (nb_binders + #|largs|)) inst_args ->
+    (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
     (* -------------------------------------------------------------- *)
     lax |> nb_binders |arg+> arg_is_sp_uparam largs k inst_args
 
@@ -414,11 +381,6 @@ Section PositiveIndBlock.
     (* declared mdecl + pos_ind *)
     lookup_minductive E kname = Some mdecl ->
     pos_ind < #|PCUICEnvironment.ind_bodies mdecl| ->
-    (* no rc *)
-    Alli (rc_notin_bool Γ) nb_binders largs ->
-    All (fun p => Alli (rc_notin_bool Γ) (nb_binders + #|largs|) p.1
-                  * rc_notin_argument_bool Γ (nb_binders + #|largs| + #|p.1|) p.2)
-        inst_uparams ->
     (* inst_uparams are positive *)
     All2 (fun x y =>
       (* fully applied ensured by typing *)
@@ -429,6 +391,18 @@ Section PositiveIndBlock.
       * positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2
     ) inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl))
     ->
+    (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
+      (* well-defined largs + inst_uparams *)
+      Alli (fun i => on_free_vars xpredT) nb_binders largs ->
+      All (fun p => Alli (fun i => on_free_vars xpredT) (nb_binders + #|largs|) p.1
+                    * on_free_vars_argument xpredT p.2)
+                  inst_uparams ->
+        (* rc_notin ∉ largs + inst_uparams *)
+      Alli (rc_notin_bool Γ) nb_binders largs ->
+      All (fun p => Alli (rc_notin_bool Γ) (nb_binders + #|largs|) p.1
+                    * rc_notin_argument_bool Γ (nb_binders + #|largs| + #|p.1|) p.2)
+            inst_uparams ->
+    (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
     (* -------------------------------------------------------------- *)
     lax |> nb_binders |arg+> arg_is_nested largs (mkInd kname pos_ind) u
                               inst_uparams inst_nuparams_indices
@@ -463,11 +437,16 @@ Section PositiveIndBlock.
         (fapp : nth k (List.rev uparams_nb_args) 0 = #|inst_args|)
         (isup_notin_largs : Alli isup_notin (size_cxt + nb_binders) largs)
         (isup_notin_args : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_args)
-        (rc_notin_largs : Alli (rc_notin_bool Γ) (nb_binders) largs)
-        (rc_notin_args : All ((rc_notin_bool Γ) (nb_binders + #|largs|)) inst_args),
+        (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
+          (wd_largs : Alli (fun _ => on_free_vars xpredT) nb_binders largs)
+          (wd_args : All (on_free_vars xpredT) inst_args)
+          (rc_notin_largs : Alli (rc_notin_bool Γ) (nb_binders) largs)
+          (rc_notin_args : All ((rc_notin_bool Γ) (nb_binders + #|largs|)) inst_args)
+        (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
+        ,
         (* ------------------------ *)
         P (pos_arg_is_sp_uparams lax nb_binders largs k inst_args e pos_k is_sp fapp
-            isup_notin_largs isup_notin_args rc_notin_largs rc_notin_args)
+            isup_notin_largs isup_notin_args wd_largs wd_args rc_notin_largs rc_notin_args)
       )
     (P_arg_is_ind :
         forall lax nb_binders (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
@@ -487,31 +466,38 @@ Section PositiveIndBlock.
         (isup_notin_instance : All (isup_notin (size_cxt + nb_binders + #|largs|)) inst_nuparams_indices)
         (ind_env_defined : lookup_minductive E kname = Some mdecl)
         (ind_pos_defined : pos_ind < #|PCUICEnvironment.ind_bodies mdecl|)
-        (rc_notin_largs : Alli (rc_notin_bool Γ) nb_binders largs)
-        (rc_notin_instance : All (fun p => Alli (rc_notin_bool Γ) (nb_binders + #|largs|) p.1
-                             * rc_notin_argument_bool Γ (nb_binders + #|largs| + #|p.1|) p.2) inst_uparams)
         (pos_nested :
             All2 (fun (x : list term × argument) (y : context_decl × bool) =>
               (#|x.1| = cdecl_to_arity y.1
               × Alli (fun (pos_arg : nat) (x0 : term) => isup_notin pos_arg x0) (size_cxt + nb_binders + #|largs|) x.1)
               * (positive_argument y.2 (nb_binders + #|largs| + #|x.1|) x.2))
             inst_uparams (List.rev (PCUICEnv_ind_uparams mdecl)))
-        (Ppos_nested : All2_param1 (fun x y r => P r.2) pos_nested),
+        (Ppos_nested : All2_param1 (fun x y r => P r.2) pos_nested)
+        (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
+          (rc_notin_largs : Alli (rc_notin_bool Γ) nb_binders largs)
+          (rc_notin_instance : All (fun p => Alli (rc_notin_bool Γ) (nb_binders + #|largs|) p.1
+                              * rc_notin_argument_bool Γ (nb_binders + #|largs| + #|p.1|) p.2) inst_uparams)
+          (wd_largs : Alli (fun i => on_free_vars xpredT) nb_binders largs)
+          (wd_instance : All (fun p => Alli (fun i => on_free_vars xpredT) (nb_binders + #|largs|) p.1
+                                            * on_free_vars_argument xpredT p.2)
+                                  inst_uparams)
+        (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
+        ,
         (* ------------------------ *)
         P (pos_arg_is_nested lax nb_binders largs kname pos_ind u inst_uparams inst_nuparams_indices mdecl
               e isup_notin_largs isup_notin_instance ind_env_defined ind_pos_defined
-              rc_notin_largs rc_notin_instance pos_nested)
+              pos_nested wd_largs wd_instance rc_notin_largs rc_notin_instance)
       )
     : forall lax nb_binders arg (p : positive_argument lax nb_binders arg), P p.
   Proof.
     fix rec 4.
     intros lax nb_binders arg p.
-    destruct p as [ | | | ? ? ? ? ? ? ? ? ? ? ? ? rc_notin_largs rc_notin_instance pos_nested].
+    destruct p as [ | | | ? ? ? ? ? ? ? ? ? ? ? ? pos_nested wd_largs wd_instance rc_notin_largs rc_notin_instance ].
     - apply P_arg_is_free.
     - apply P_arg_is_sp_uparams.
     - apply P_arg_is_ind.
     - apply P_arg_is_nested.
-      clear rc_notin_instance.
+      clear wd_instance rc_notin_instance.
       induction pos_nested; constructor; cbn.
       destruct x; destruct y; cbn.
       apply rec. apply IHpos_nested.
@@ -569,7 +555,9 @@ Section PositiveIndBlock.
      2. The return indices do not contain the inductives nor the sp_uparams
   *)
   Definition PosArgBool lb arg :=
-    (~~ check_lax arg -> rc_notin_argument_bool lb 0 arg) *
+    (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
+      (~~ check_lax arg -> rc_notin_argument_bool lb 0 arg) *
+    (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
     positive_argument lb true 0 arg.
 
   Definition PosArg Γ := PosArgBool (map check_lax Γ).
@@ -588,9 +576,11 @@ Section PositiveIndBlock.
     Alli (isup_notin) #|nuparams| (map decl_type (List.rev indices)).
 
   Definition positive_one_inductive_body (indb : one_inductive_body) : Type :=
-      All positive_constructor indb.(ind_ctors)
-    (* To add to prevent inductive-inductive types *)
-    * positive_indices indb.(ind_indices).
+    All positive_constructor indb.(ind_ctors) *
+    (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
+      positive_indices indb.(ind_indices).
+    (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
+
 
 End PositiveIndBlock.
 
@@ -611,7 +601,7 @@ Proof.
   - constructor => //.
   - constructor => //.
   - constructor => //. lia.
-  - econstructor; tea. clear rc_notin_instance.
+  - econstructor; tea. clear wd_instance rc_notin_instance.
     induction Ppos_nested; cbn in *; constructor.
     + destruct r as [[]]; repeat constructor => //.
     + apply IHPpos_nested.
@@ -667,13 +657,16 @@ Proof.
   + admit.
   + admit.
   + admit.
-  + admit.
-  + clear rc_notin_instance.
+  + clear wd_instance rc_notin_instance.
     induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
           [[fapp pos_llargs] pos_inst] pos_arg RL IHRL ?]; constructor; eauto.
     cbn in *; cbn_length; repeat split => //.
     - apply_eq pos_llargs. solve_length.
     - apply_eq pos_arg. lia.
+  + eapply Alli_cst; tea.
+  + eapply (All_impl wd_instance); intros ? []; split => //. eapply Alli_cst; tea.
+  + admit.
+  + admit.
 Admitted.
 
 Definition pos_arg_notin_fold {nb_block up nup Γ lax tm nb_binders} arg :
@@ -687,12 +680,16 @@ Proof.
   + admit.
   + admit.
   + admit.
-  + admit.
-  + induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
+  + clear wd_instance rc_notin_instance.
+    induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
           [[fapp pos_llargs] pos_inst] pos_arg RL IHRL ?]; constructor; eauto.
     cbn in *; cbn_length; repeat split => //.
     - apply_eq pos_llargs. solve_length.
     - apply_eq pos_arg. lia.
+  + eapply Alli_cst; tea.
+  + eapply (All_impl wd_instance); intros ? []; split => //. eapply Alli_cst; tea.
+  + admit.
+  + admit.
 Admitted.
 
 Definition on_free_vars_lift (p : nat -> bool) (c n k : nat)
@@ -712,6 +709,12 @@ Proof.
   rewrite eaq eqb. apply on_free_vars_lift.
 Qed.
 
+Definition All_to_Alli {A} {P : A -> Type} {l} n :
+  All P l -> Alli (fun _ => P) n l.
+Proof.
+  intros X; induction X in n |- *; constructor; eauto.
+Qed.
+
 Tactic Notation "solve_Alli" :=
   eapply Alli_mapi; mtea; intros i t;
   eapply on_free_vars_lift_eq; cbn_length; (reflexivity || lia).
@@ -729,8 +732,12 @@ Proof.
   induction pos_arg using positive_argument_rect'; intros k0 ->.
   all: (ltac2:(nconstructor 4)); cbn_length => //; mtea; try solve [solve_Alli | solve_All].
   + eapply on_free_vars_lift_eq; mtea; cbn_length; reflexivity || lia.
-  + admit.
-  + admit.
+  + eapply (Alli_mapi wd_largs). intros i t.
+    erewrite <-(PCUICOnFreeVars.on_free_vars_lift _ _ _ t).
+    eapply on_free_vars_impl; tea. done.
+  + eapply All_map, (All_impl wd_args). intros t.
+    erewrite <-(PCUICOnFreeVars.on_free_vars_lift _ _ _ ).
+    eapply on_free_vars_impl; tea. done.
   + admit.
   + admit.
   + fold argument_mapi.

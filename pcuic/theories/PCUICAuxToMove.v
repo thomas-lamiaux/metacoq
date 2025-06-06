@@ -608,6 +608,42 @@ Compute (ff2 4). Compute (ff2 3). Compute (ff2 2). Compute (ff2 1). Compute (ff2
 *)
 
 
+  (* lemma for binders *)
+  (* already existing ??? on_free_vars directly *)
+  Definition on_free_vars_tProd P k l t :
+    Alli (fun i => on_free_vars (shiftnP i P)) k l ->
+    on_free_vars (shiftnP (k + #|l|) P) t ->
+    on_free_vars (shiftnP k P) (it_tProd l t).
+  Proof.
+    todo " totod".
+  Qed.
+
+  Definition on_free_vars_tLambda P k l t :
+    Alli (fun i => on_free_vars (shiftnP i P)) k l ->
+    on_free_vars (shiftnP (k + #|l|) P) t ->
+    on_free_vars (shiftnP k P) (it_tLambda l t).
+  Proof.
+    todo " totod".
+  Qed.
+
+  Definition on_free_vars_tLambda_eq P k l t m :
+    m = k + #|l| ->
+    Alli (fun i => on_free_vars (shiftnP i P)) k l ->
+    on_free_vars (shiftnP m P) t ->
+    on_free_vars (shiftnP k P) (it_tLambda l t).
+  Proof.
+    todo " totod".
+  Qed.
+
+  Definition on_free_vars_mkApps P k u vs :
+    All (on_free_vars (shiftnP k P)) vs ->
+    on_free_vars (shiftnP k P) u ->
+    on_free_vars (shiftnP k P) (mkApps u vs).
+  Proof.
+    todo " totod".
+  Qed.
+
+
 
 (* tactic *)
 From Ltac2 Require Import Ltac2 Printf.
