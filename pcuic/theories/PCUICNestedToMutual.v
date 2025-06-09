@@ -6,7 +6,7 @@ From Stdlib Require Import ssreflect ssrbool ssrfun Morphisms Setoid.
 
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICOnFreeVars PCUICOnFreeVarsConv PCUICInstDef PCUICOnFreeVars.
-From MetaRocq.PCUIC Require Import PCUICSigmaCalculus PCUICInstConv.
+From MetaRocq.PCUIC Require Import PCUICSigmaCalculus PCUICInstConv PCUICConfluence.
 Import PCUICEnvironment.
 From MetaRocq.PCUIC Require Import PCUICAuxToMove PCUICViewInductive.
 From MetaRocq.PCUIC Require Import BDStrengthening.
@@ -37,38 +37,51 @@ Indices :
 
 *)
 
-Definition on_free_vars_argument_impl (P Q : nat -> bool) arg:
-  on_free_vars_argument P arg -> (forall i : nat, P i -> Q i) -> on_free_vars_argument Q arg.
-Admitted.
 
+
+(* OTHERS *)
 Definition map_xpred0 {A} (l : list A) : map xpred0 l = repeat false #|l|.
   Proof.
     induction l; cbn; f_equal; eauto.
   Qed.
 
-Definition on_free_vars_argument_subst P k i s t :
-  All (on_free_vars (shiftnP k P)) s ->
-  on_free_vars_argument (shiftnP (k + i + #|s|) P) t ->
-  on_free_vars_argument (shiftnP (k + i) P) (subst_argument s i t).
+
+
+(* LEMMA ON ALL *)
+Definition All_telescope_impl2 {A : Type} {P1 P2 Q : list A -> A -> Type} {l : list A} :
+  All_telescope P1 l -> All_telescope P2 l ->
+  (forall Γ x, P1 Γ x -> P2 Γ x -> Q Γ x) ->  All_telescope Q l.
 Proof.
+  intros x; induction x; constructor; eauto; inversion X.
+  all: try solve [ apply (f_equal ( @length A)) in H0; revert H0; cbn_length; cbn; lia] .
+  all: try solve [apply app_inj_tail in H0 as []; subst => //; eauto ].
+Qed.
+
+  Definition All_to_All_telescope {A : Type} (P : A -> Type) (l : list A) :
+  All P l -> All_telescope (fun _ => P) l.
+  Proof.
+    induction 1; only 1 : constructor.
+    change (x :: l) with ([x] ++ l). apply All_telescope_app_inv => //.
+    apply All_telescope_singleton => //.
+  Qed.
+
+Definition Alli_impl2 {A : Type} {P1 P2 Q : nat -> A -> Type} {l : list A} {p q m : nat} :
+  Alli P1 p l -> Alli P2 q l ->
+  (forall (i : nat) (x : A), P1 (p + i) x -> P2 (q + i) x -> Q (m + i) x) -> Alli Q m l.
 Admitted.
 
-Definition on_free_vars_argument_subst_eq P k i s m n t :
-  m = k + i + #|s| ->
-  n = k + i ->
-  All (on_free_vars (shiftnP k P)) s ->
-  on_free_vars_argument (shiftnP m P) t ->
-  on_free_vars_argument (shiftnP n P) (subst_argument s i t).
-Proof.
-  intros -> ->; apply on_free_vars_argument_subst.
-Admitted.
 
+
+(* LEMMA ON SHIFTNP *)
 Definition shiftnP_impl2 (p q r : nat -> bool) :
   (forall i, p i -> q i -> r i) ->
   forall n i, shiftnP n p i -> shiftnP n q i -> shiftnP n r i.
 Proof.
 Admitted.
 
+
+
+(* LEMMA ON FREE_VARS *)
 Definition on_free_vars_lift0_overflow (P : nat -> bool) k m p t:
   p + k <= m ->
   (forall i, p <= i -> P i) ->
@@ -83,10 +96,10 @@ Proof.
   intros. eapply cs. lia.
 Qed.
 
-Definition on_free_vars_lift_overflow (P : nat -> bool) k m p j t:
+Definition on_free_vars_lift_overflow (P Q : nat -> bool) k m p j t:
   p + k <= m ->
   (forall i, p <= i -> P i) ->
-  on_free_vars xpredT t ->
+  on_free_vars Q t ->
   on_free_vars (shiftnP (k + j) P) (lift m j t).
 Proof.
   intros Hlt cs wdt.
@@ -100,36 +113,10 @@ Proof.
     apply cs. solve_length.
 Qed.
 
-Definition rc_notinP_overflow Γ :
-  forall i : nat, #|Γ| <= i -> rc_notinP Γ i.
-Proof.
-  intros.
-  unfold rc_notinP. rewrite -map_nth.
-  apply nth_overflow. solve_length.
-Qed.
-
-Definition rc_notin_lift0_overflow Γ k m t:
-  #|Γ| + k <= m ->
-  rc_notin_bool Γ k t ->
-  rc_notin_bool Γ k (lift0 m t).
-Proof.
-  intros. eapply on_free_vars_lift0_overflow; tea.
-  apply rc_notinP_overflow.
-Qed.
-
-Definition rc_notin_lift_overflow Γ k m j t:
-  #|Γ| + k <= m ->
-  on_free_vars xpredT t ->
-  rc_notin_bool Γ (k + j) (lift m j t).
-Proof.
-  intros. eapply on_free_vars_lift_overflow; tea.
-  apply rc_notinP_overflow.
-Qed.
-
-Definition on_free_vars_inst_up (P : nat -> bool) k m p t σ:
+Definition on_free_vars_inst_up (P Q : nat -> bool) k m p t σ:
   p + k <= m ->
   (forall i, p <= i -> P i) ->
-  (forall i, on_free_vars xpredT (σ i)) ->
+  (forall i, on_free_vars Q (σ i)) ->
   on_free_vars (shiftnP k P) t ->
   on_free_vars (shiftnP k P) t.[up m σ].
 Proof.
@@ -147,9 +134,38 @@ Proof.
   unfold addnP. intros; cbn. apply cs. lia.
 Qed.
 
-Definition rc_notin_inst_up Γ k m t σ:
+
+
+(* LEMMA ON RC_NOTIN *)
+Definition rc_notinP_overflow Γ :
+  forall i : nat, #|Γ| <= i -> rc_notinP Γ i.
+Proof.
+  intros.
+  unfold rc_notinP. rewrite -map_nth.
+  apply nth_overflow. solve_length.
+Qed.
+
+Definition rc_notin_lift0_overflow Γ k m t:
   #|Γ| + k <= m ->
-    (forall i, on_free_vars xpredT (σ i)) ->
+  rc_notin_bool Γ k t ->
+  rc_notin_bool Γ k (lift0 m t).
+Proof.
+  intros. eapply on_free_vars_lift0_overflow; tea.
+  apply rc_notinP_overflow.
+Qed.
+
+Definition rc_notin_lift_overflow Q Γ k m j t:
+  #|Γ| + k <= m ->
+  on_free_vars Q t ->
+  rc_notin_bool Γ (k + j) (lift m j t).
+Proof.
+  intros. eapply on_free_vars_lift_overflow; tea.
+  apply rc_notinP_overflow.
+Qed.
+
+Definition rc_notin_inst_up Q Γ k m t σ:
+  #|Γ| + k <= m ->
+    (forall i, on_free_vars Q (σ i)) ->
   rc_notin Γ k t ->
   rc_notin Γ k t.[up m σ].
 Proof.
@@ -158,9 +174,9 @@ Proof.
   intros; apply rc_notinP_overflow. solve_length.
 Qed.
 
-Definition rc_notin_lift0 {lb n t} :
+Definition rc_notin_lift0 Q {lb n t} :
   #|lb| <= n ->
-  on_free_vars xpredT t ->
+  on_free_vars Q t ->
   rc_notin_bool lb 0 (lift0 n t).
 Proof.
   unfold rc_notin_bool. intros H wdt.
@@ -191,15 +207,8 @@ Proof.
     - rewrite !nth_overflow; try cbn_length; cbn; lia.
 Qed.
 
-Definition rc_notin_argument_decrease {l l' nb_binders arg} :
-  All2 (fun a b => is_true (~~ a) -> is_true (~~ b)) l l' ->
-  rc_notin_argument_bool l  nb_binders arg ->
-  rc_notin_argument_bool l' nb_binders arg.
-Proof.
-Admitted.
-
-Definition rc_notin_false {n nb_binders t} :
-  on_free_vars xpredT t ->
+Definition rc_notin_false Q {n nb_binders t} :
+  on_free_vars Q t ->
   rc_notin_bool (repeat false n) nb_binders t.
 Proof.
   unfold rc_notin_bool, rc_notinP. eapply on_free_vars_impl; tea.
@@ -207,12 +216,6 @@ Proof.
   rewrite -map_nth map_rev map_repeat rev_repeat nth_repeat.
   cbn. destruct (Nat.ltb_spec i nb_binders) => //.
 Qed.
-
-Definition rc_notin_argument_false {n nb_binders arg} :
-  on_free_vars_argument xpredT arg ->
-  rc_notin_argument_bool (repeat false n) nb_binders arg.
-Proof.
-Admitted.
 
 Definition rc_notin_false_left {n l nb_binders t} :
   rc_notin_bool (repeat false n ++ l) nb_binders t =
@@ -226,12 +229,6 @@ Proof.
   + rewrite app_nth2. solve_length.
     rewrite map_repeat /= nth_repeat nth_overflow //=. solve_length.
 Qed.
-
-Definition rc_notin_argument_false_left {n l nb_binders arg} :
-  rc_notin_argument_bool (repeat false n ++ l) nb_binders arg =
-  rc_notin_argument_bool l nb_binders arg.
-Proof.
-Admitted.
 
 Definition rc_notin_app {l1 l2 n t} :
   rc_notin_bool l1 (#|l2| + n) t ->
@@ -249,13 +246,6 @@ Proof.
   - rewrite -> app_nth1 by solve_length. done.
   - rewrite -> app_nth2 by solve_length. cbn_length. done.
 Qed.
-
-Definition rc_notin_argument_app {l1 l2 n arg} :
-  rc_notin_argument_bool l1 (#|l2| + n) arg ->
-  rc_notin_argument_bool l2 n arg ->
-  rc_notin_argument_bool (l1 ++ l2) n arg.
-Proof.
-Admitted.
 
 Definition rc_notin_lax_false Γ arg i t :
   check_lax arg = false ->
@@ -285,17 +275,91 @@ Proof.
   destruct n; cbn => //. rewrite Nat.sub_0_r //.
 Qed.
 
+
+
+
+
+
+
+(* LEMMA ON ARG *)
+Definition on_free_vars_argument_impl (P Q : nat -> bool) arg:
+  on_free_vars_argument P arg -> (forall i : nat, P i -> Q i) -> on_free_vars_argument Q arg.
+Admitted.
+
+Definition on_free_vars_argument_subst P k i s t :
+  All (on_free_vars (shiftnP k P)) s ->
+  on_free_vars_argument (shiftnP (k + i + #|s|) P) t ->
+  on_free_vars_argument (shiftnP (k + i) P) (subst_argument s i t).
+Proof.
+Admitted.
+
+Definition on_free_vars_argument_subst_eq P k i s m n t :
+  m = k + i + #|s| ->
+  n = k + i ->
+  All (on_free_vars (shiftnP k P)) s ->
+  on_free_vars_argument (shiftnP m P) t ->
+  on_free_vars_argument (shiftnP n P) (subst_argument s i t).
+Proof.
+  intros -> ->; apply on_free_vars_argument_subst.
+Admitted.
+
+Definition rc_notin_argument_decrease {l l' nb_binders arg} :
+  All2 (fun a b => is_true (~~ a) -> is_true (~~ b)) l l' ->
+  rc_notin_argument_bool l  nb_binders arg ->
+  rc_notin_argument_bool l' nb_binders arg.
+Proof.
+Admitted.
+
+Definition rc_notin_argument_false Q {n nb_binders arg} :
+  on_free_vars_argument Q arg ->
+  rc_notin_argument_bool (repeat false n) nb_binders arg.
+Proof.
+Admitted.
+
+Definition rc_notin_argument_false_left {n l nb_binders arg} :
+  rc_notin_argument_bool (repeat false n ++ l) nb_binders arg =
+  rc_notin_argument_bool l nb_binders arg.
+Proof.
+Admitted.
+
+Definition rc_notin_argument_app {l1 l2 n arg} :
+  rc_notin_argument_bool l1 (#|l2| + n) arg ->
+  rc_notin_argument_bool l2 n arg ->
+  rc_notin_argument_bool (l1 ++ l2) n arg.
+Proof.
+Admitted.
+
+Definition All_telescope_rc_notin_lax_false Q l :
+  map check_lax l = repeat false #|l| ->
+  All (on_free_vars_argument Q) l ->
+  All_telescope (fun Γ arg => ~~ check_lax arg -> rc_notin_argument_bool (map check_lax Γ) 0 arg) l.
+Proof.
+  induction l; cbn. constructor.
+  intros [= lax_a lax_l] wdal. inversion wdal.
+  change (a::l) with ([a] ++ l). apply All_telescope_app_inv.
+  - apply All_telescope_singleton.
+    change (map check_lax _) with (repeat false 0).
+    intros. eapply rc_notin_argument_false => //. tea.
+  - eapply All_telescope_impl2. 1: eapply IHl => //. eapply All_to_All_telescope; tea.
+    cbn. intros Γ arg rc_notin_arg wd_arg lax_arg. rewrite lax_a.
+    change (false :: _) with (repeat false 1 ++ map check_lax Γ).
+    apply rc_notin_argument_app.
+    * eapply rc_notin_argument_false => //. tea.
+    * apply rc_notin_arg. done.
+Qed.
+
+
+
+
+
+
+
+
+
 Section StrengthArg.
   Context (nb_block : nat).
   Context (up : list (context_decl * bool)).
   Context (nup : context).
-
-  (* remove one arg or update it, and the renaming function  *)
-  (* Definition StrPosArg olb (arg : argument) : Type :=
-    (* rc not in arg *)
-    (~~ check_lax arg -> rc_notin_argument_bool olb 0 arg) *
-    (* arg is pos *)
-    positive_argument nb_block up nup olb true 0 arg. *)
 
   Definition StrAcc := list argument * list argument * (nat -> nat).
 
@@ -553,7 +617,6 @@ Section NestedToMutualInd.
   Context (pos_g_args :
     All_telescope (fun Γ arg =>
       (~~ check_lax arg -> is_true (rc_notin_argument Γ 0 arg)) *
-      (* (forall Ht : check_lax arg = false, is_true (rc_notin Γ 0 (strict_to_term arg Ht))) * *)
       positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax Γ) true 0 arg
     )
   g_args).
@@ -563,7 +626,6 @@ Section NestedToMutualInd.
   Notation nb_g_largs := #|g_largs|.
 
   Context (pos_g_largs : Alli (isup_notin g_uparams_b) (nb_g_nuparams + nb_g_args) g_largs).
-  Context (wd_g_largs :  Alli (fun i => on_free_vars xpredT) 0 g_largs).
   Context (rc_notin_g_largs : Alli (rc_notin g_args) 0 g_largs).
 
   (* Information about the inductive type used for nesting *)
@@ -575,8 +637,7 @@ Section NestedToMutualInd.
 
   Context (l_nuparams : context).
   Notation nb_l_nuparams := #|l_nuparams|.
-  Context (pos_l_nuparams : Alli (isup_notin l_uparams_b) 0
-                                (terms_of_cxt l_nuparams)).
+  Context (pos_l_nuparams : Alli (isup_notin l_uparams_b) 0 (terms_of_cxt l_nuparams)).
 
   (* Instantiation Nesting *)
   Notation nb_old_cxt_sub := (nb_g_nuparams + nb_g_args + nb_g_largs).
@@ -594,8 +655,6 @@ Section NestedToMutualInd.
         * positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args) pos (nb_g_largs + #|llargs|) arg
     ) inst_uparams_a (List.rev l_uparams_b)).
 
-  Context (wd_inst_llargs_args : All (fun p => Alli (fun i => on_free_vars xpredT) nb_g_largs p.1
-              * on_free_vars_argument xpredT p.2) inst_uparams_a).
   Context (rc_notin_inst_llargs_args : All (fun p => Alli (rc_notin g_args) nb_g_largs p.1
               * (rc_notin_argument g_args (nb_g_largs + #|p.1|) p.2)) inst_uparams_a).
 
@@ -623,7 +682,7 @@ Section NestedToMutualInd.
     All (fun p => Alli (isup_notin g_uparams_b) nb_old_cxt_sub p.1)
         inst_uparams_a.
   Proof.
-    clear wd_inst_llargs_args rc_notin_inst_llargs_args.
+    clear rc_notin_inst_llargs_args.
     induction spec_inst_uparams_a; cbn in spec_inst_uparams_a; constructor.
     inversion spec_inst_uparams_a. subst.
     destruct x as [llargs arg], y as [cdecl pos], r as [[fapp pos_llargs] pos_arg]; cbn in * => //.
@@ -634,7 +693,7 @@ Section NestedToMutualInd.
     All (fun x => positive_argument nb_g_block g_uparams_b g_nuparams (map check_lax g_args)
                       true (nb_g_largs + #|x.1|) x.2) inst_uparams_a.
   Proof.
-    clear wd_inst_llargs_args rc_notin_inst_llargs_args.
+    clear rc_notin_inst_llargs_args.
     induction spec_inst_uparams_a; constructor; cbn; eauto.
     destruct x as [llargs arg], y as [cdecl pos], r as [[fapp ?] pos_arg]; cbn in *.
     destruct pos => //. apply positive_argument_increase2 => //.
@@ -674,26 +733,6 @@ Section NestedToMutualInd.
     1: cbn_length; rewrite size_inst_uparams //.
     apply All2_map_left. apply pos_inst_to_term_old.
   Qed.
-
-  (* Definition pos_inst_uparams : forall n,
-    rc_notinP (map check_lax Γ) n ->
-    rc_notin_bool  nb_l_nuparams +  nb_old_cxt_sub (inst_uparams n).
-
-    rc_notin_p : rc_notinP (map check_lax Γ) p
-(1 / 1)
-on_free_vars (rc_notinP (map check_lax Γ))
-(up (nb_l_nuparams + #|Γ|) inst_uparams p)
-
-  Proof.
-    intros n. unfold isup_notinP, andP, ind_notinP, sp_uparams_notinP.
-    intros x%andb_prop; destruct x as [notInd notSpUparams].
-    destruct (Nat.leb_spec nb_l_uparams n) as [nleb | nlt] => //.
-    unfold inst_uparams.
-    rewrite negb_true_iff in notSpUparams. revert notSpUparams.
-    apply (All2_nth (fun x y => y.2 = false -> isup_notin g_uparams_b nb_old_cxt_sub x)).
-    1: cbn_length; rewrite size_inst_uparams //.
-    apply All2_map_left. apply pos_inst_to_term_old.
-  Qed. *)
 
   Definition inst_preserve_isup_notin (k m : nat) t :
     m = nb_old_cxt_sub + k ->
@@ -752,7 +791,11 @@ on_free_vars (rc_notinP (map check_lax Γ))
     Alli (fun i => positive_argument nb_g_block g_uparams_b g_nuparams
       (repeat false i) false 0) 0 g_args_no_rc.
   Proof.
-  Admitted.
+    induction pos_g_args_no_rc. constructor.
+    eapply Alli_app_inv; eauto. repeat constructor.
+    eapply positive_argument_decrease1; tea.
+    clear. induction Γ; constructor; eauto.
+  Qed.
 
   Definition length_g_args_no_rc :
     #|filter (fun t => ~~ check_lax t) g_args| = #|g_args_no_rc|.
@@ -766,18 +809,33 @@ on_free_vars (rc_notinP (map check_lax Γ))
   (* New renaming + Spec *)
   Definition rename_no_rc : nat -> nat := remove_rc_rename g_args.
 
+  Definition on_free_vars_rename_no_rc P i t :
+    (rc_notin g_args) i t ->
+    on_free_vars (shiftnP (nb_g_args + i) P)  t ->
+    on_free_vars (shiftnP (nb_g_args_no_rc + i) P) (rename rename_no_rc i t).
+  Proof.
+    destruct (pos_remove_rc _ _ _ _ pos_g_args) as [[pos_oargs pos_nargs] pos_rename].
+    cbn in pos_rename. intros. apply pos_rename => //.
+    all: rewrite remove_rc_id_oargs; cbn => //.
+  Qed.
+
+  Definition on_free_vars_argument_rename_no_rc P i arg :
+    (rc_notin_argument g_args) i arg ->
+    on_free_vars_argument (shiftnP (nb_g_args + i) P) arg ->
+    on_free_vars_argument (shiftnP (nb_g_args_no_rc + i) P) (rename_argument rename_no_rc i arg).
+  Proof.
+  Admitted.
+
   Definition pos_rename_no_rc i t :
     (rc_notin g_args) i t ->
     isup_notin g_uparams_b (nb_g_nuparams + nb_g_args + i) t ->
     isup_notin g_uparams_b (nb_g_nuparams + nb_g_args_no_rc + i)
                                       (rename rename_no_rc i t).
   Proof.
-    destruct (pos_remove_rc _ _ _ _ pos_g_args) as [[pos_oargs pos_nargs] pos_rename].
     intros. unfold isup_notin.
     replace (nb_g_nuparams + nb_g_args_no_rc + i) with ((nb_g_args_no_rc + i) + nb_g_nuparams) by lia.
-    rewrite -shiftnP_add. apply pos_rename. 1: rewrite remove_rc_id_oargs //.
-    rewrite shiftnP_add. rewrite remove_rc_id_oargs. cbn; cbn_length.
-    replace (nb_g_args + i + nb_g_nuparams) with (nb_g_nuparams + nb_g_args + i) by lia.
+    rewrite -shiftnP_add. apply on_free_vars_rename_no_rc => //. rewrite shiftnP_add.
+    replace ((nb_g_args + i) + nb_g_nuparams) with (nb_g_nuparams + nb_g_args + i) by lia.
     done.
   Qed.
 
@@ -815,8 +873,16 @@ on_free_vars (rc_notinP (map check_lax Γ))
       * on_free_vars_argument xpredT p.2
       ) l_inst_uparams_no_rc.
   Proof.
-  Admitted.
-
+    unfold l_inst_uparams_no_rc. eapply All_map.
+    eapply (All_impl rc_notin_inst_llargs_args).
+    intros [llargs arg] [rc_notin_llargs rc_notin_arg]; cbn in *. split.
+    + eapply (Alli_mapi rc_notin_llargs). intros.
+      erewrite <- shiftnP_xpredT. eapply on_free_vars_rename_no_rc => //.
+      rewrite shiftnP_xpredT => //. eapply on_free_vars_any_xpredT; tea.
+    + eapply on_free_vars_argument_impl with (P := shiftnP _ xpredT).
+      2: done. eapply on_free_vars_argument_rename_no_rc => //.
+      eapply on_free_vars_argument_impl; tea. intros. rewrite shiftnP_xpredT => //.
+  Qed.
 
   Definition size_l_inst_uparams_no_rc : #|l_inst_uparams_no_rc| = nb_l_uparams.
   Proof.
@@ -943,16 +1009,20 @@ on_free_vars (rc_notinP (map check_lax Γ))
     intros i. unfold inst_uparams_no_rc.
     destruct (Nat.ltb_spec i #|(map inst_to_term_no_rc l_inst_uparams_no_rc)|).
     2: { rewrite nth_overflow; tea. done. }
-    apply All_nth; tea. unfold inst_to_term_no_rc.
+    apply All_nth; tea.
     eapply All_map, (All_impl wd_l_inst_uparams_no_rc).
     intros [llargs arg] [wd_llargs wd_arg]; cbn in *.
+    rewrite -(shiftnP_xpredT 0).
+    eapply on_free_vars_tLambda.
+    - eapply (Alli_impl wd_llargs). intros; rewrite shiftnP_xpredT; done.
+    - admit.
   Admitted.
 
 
 
 
 
-
+  (* ******************* END LEMMA ******************* *)
 
 
 
@@ -1010,49 +1080,34 @@ on_free_vars (rc_notinP (map check_lax Γ))
     eapply All_map_eq. eapply g_args_no_rc_check_lax.
   Qed.
 
-  Definition All_telescope_impl2 {A : Type} {P1 P2 Q : list A -> A -> Type} {l : list A} :
-  All_telescope P1 l -> All_telescope P2 l ->
-  (forall Γ x, P1 Γ x -> P2 Γ x -> Q Γ x) ->  All_telescope Q l.
-Proof.
-  intros x; induction x; constructor; eauto; inversion X.
-  all: try solve [ apply (f_equal ( @length A)) in H0; revert H0; cbn_length; cbn; lia] .
-  all: try solve [apply app_inj_tail in H0 as []; subst => //; eauto ].
-Qed.
-
-  Definition All_to_All_telescope {A : Type} (P : A -> Type) (l : list A) :
-  All P l -> All_telescope (fun _ => P) l.
+  Definition wd_cstr_extra_args :
+    All (on_free_vars_argument xpredT) cstr_extra_args.
   Proof.
-    induction 1; only 1 : constructor.
-    change (x :: l) with ([x] ++ l). apply All_telescope_app_inv => //.
-    apply All_telescope_singleton => //.
-  Qed.
-
-  Definition All_telescope_rc_notin_lax_false l :
-    map check_lax l = repeat false #|l| ->
-    All (on_free_vars_argument xpredT) l ->
-    All_telescope (fun Γ arg => ~~ check_lax arg -> rc_notin_argument_bool (map check_lax Γ) 0 arg) l.
-  Proof.
-    induction l; cbn. constructor.
-    intros [= lax_a lax_l] wdal. inversion wdal.
-    change (a::l) with ([a] ++ l). apply All_telescope_app_inv.
-    - apply All_telescope_singleton.
-      change (map check_lax _) with (repeat false 0).
-      intros. apply rc_notin_argument_false => //.
-    - eapply All_telescope_impl2. 1: eapply IHl => //. eapply All_to_All_telescope; tea.
-      cbn. intros Γ arg rc_notin_arg wd_arg lax_arg. rewrite lax_a.
-      change (false :: _) with (repeat false 1 ++ map check_lax Γ).
-      apply rc_notin_argument_app.
-      * apply rc_notin_argument_false => //.
-      * apply rc_notin_arg. done.
-  Qed.
+    unfold cstr_extra_args. repeat apply All_app_inv.
+    - admit.
+    - apply All_map. unfold g_largs_no_rc.
+      eapply All_impl. 2: intros a b; rewrite on_free_vars_argument_free1; exact b.
+      eapply Alli_All. 2: exact (fun a b c => c).
+      eapply (Alli_mapi2 pos_g_largs rc_notin_g_largs). intros.
+      rewrite <- shiftnP_xpredT; apply on_free_vars_rename_no_rc => //.
+      rewrite shiftnP_xpredT. by eapply on_free_vars_impl; tea.
+    - apply All_map.
+      eapply All_impl; only 2: (intros a b; rewrite on_free_vars_argument_free1; exact b).
+      eapply Alli_All; only 2: exact (fun a b c => c).
+      eapply (Alli_mapi pos_l_nuparams).
+      intros. eapply on_free_vars_inst => //; tea.
+      intros. erewrite <- shiftnP_xpredT. eapply on_free_vars_up with (Q := xpredT).
+      2: by rewrite shiftnP_xpredT. intros; eapply wd_inst_uparams_no_rc.
+  Admitted.
 
   Definition rc_notin_cstr_exta_args :
     All_telescope (fun Γ arg => ~~ check_lax arg -> rc_notin_argument_bool (map check_lax Γ) 0 arg)
     cstr_extra_args.
   Proof.
-    apply All_telescope_rc_notin_lax_false.
-    apply cstr_extra_args_lax_false.
-  Admitted.
+    eapply All_telescope_rc_notin_lax_false.
+    + apply cstr_extra_args_lax_false.
+    + apply wd_cstr_extra_args.
+  Qed.
 
   Definition pos_cstr_extra_args :
     All_telescope (fun Γ => positive_argument nb_m_block g_uparams_b g_nuparams (map check_lax Γ) false 0) cstr_extra_args.
@@ -1072,7 +1127,7 @@ Qed.
       - apply All_telescope_to_Alli with
               (P := (fun n (x : term) => isup_notin g_uparams_b (n) x))
               (n := nb_new_cxt_sub).
-        eapply Alli_mapi; tea. cbn. intros. apply inst_no_rc_preserve_isup_notin => //.
+        eapply (Alli_mapi pos_l_nuparams). cbn. intros. apply inst_no_rc_preserve_isup_notin => //.
   Qed.
 
   Definition PosArg_cstr_extra_args : All_telescope (PosArg nb_m_block g_uparams_b g_nuparams) cstr_extra_args.
@@ -1140,8 +1195,6 @@ Qed.
     (pos_arg : positive_argument nb_m_block g_uparams_b g_nuparams Γ
                   lax (nb_binders + #|largs| + #|llargs|) arg)
     (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
-    (wd_largs : Alli (fun _ => on_free_vars xpredT) nb_binders largs)
-    (wd_args : All (on_free_vars xpredT) args)
     (rc_notin_largs : Alli (rc_notin_bool Γ) nb_binders largs)
     (rc_notin_args : All (rc_notin_bool Γ (nb_binders + #|largs|)) args)
     (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
@@ -1156,17 +1209,7 @@ Qed.
     + apply on_free_vars_tProd => //.
       apply on_free_vars_mkApps => //.
       eapply on_free_vars_tLambda_eq; tea; lia.
-    (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
-    + eapply Alli_app_inv; tea. eapply (Alli_mapi wd_largs0).
-      intros i t ?. erewrite <- shiftnP_xpredT. eapply on_free_vars_subst.
-      - by apply All_forallb, All_rev.
-      - by rewrite shiftnP_xpredT.
-    + eapply All_map, (All_impl wd_args0).
-      intros t ?. erewrite <- shiftnP_xpredT. eapply on_free_vars_subst.
-      - by apply All_forallb, All_rev.
-      - by rewrite shiftnP_xpredT.
-    (** END ADDITION NO INDUCTIVE-INDUCTIVE **)
-    + clear wd_instance rc_notin_instance.
+    + clear rc_notin_instance.
       induction Ppos_nested; constructor. 2: apply IHPpos_nested.
       destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
       cbn_length; repeat split => //.
@@ -1176,20 +1219,6 @@ Qed.
         eapply pos_subst_argument_eq; tea. 4: apply All_rev; tea.
         all: cbn_length; try reflexivity; lia.
     (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
-    + eapply Alli_app_inv; tea. eapply (Alli_mapi wd_largs0).
-      intros i t ?. erewrite <- shiftnP_xpredT. eapply on_free_vars_subst.
-      - by apply All_forallb, All_rev.
-      - by rewrite shiftnP_xpredT.
-    + eapply All_map, (All_impl wd_instance).
-      intros [m_llargs m_arg] [wd_m_llargs wd_m_arg]; cbn in *. split.
-      - eapply (Alli_mapi wd_m_llargs).
-        intros i t ?. erewrite <- shiftnP_xpredT. eapply on_free_vars_subst.
-        * by apply All_forallb, All_rev.
-        * by rewrite shiftnP_xpredT.
-      - eapply on_free_vars_argument_impl with (P := shiftnP (0 + _) xpredT) => //.
-        eapply on_free_vars_argument_subst.
-        * eapply All_rev, All_impl; mtea; intros; by rewrite shiftnP_xpredT.
-        * eapply on_free_vars_argument_impl; tea. intros; by rewrite shiftnP_xpredT.
     + eapply All_map. eapply (All_impl rc_notin_instance); cbn.
       intros [llargs0 arg0]. cbn. intros [rc_notin_llargs0 rc_notin_arg0]; cbn. split.
       * eapply (Alli_mapi rc_notin_llargs0). intros i t rc_notin_t.
@@ -1273,31 +1302,27 @@ Qed.
       + apply eq_prod in Heqnth as [Hfst Hsnd].
         eapply on_free_vars_tProd, on_free_vars_mkApps, on_free_vars_tLambda; cbn_length.
         (* tProd largs *)
-        - eapply (Alli_mapi_rec a3). intros. apply rc_notin_inst_up => //. lia. apply wd_inst_uparams_no_rc.
+        - eapply (Alli_mapi_rec a1). intros. eapply rc_notin_inst_up; tea. lia.
+          apply wd_inst_uparams_no_rc.
         (* mkApss _ inst_args *)
-        - eapply All_map; eapply (All_impl a4). intros. apply rc_notin_inst_up => //. lia. apply wd_inst_uparams_no_rc.
+        - eapply All_map; eapply (All_impl a2). intros. eapply rc_notin_inst_up; tea. lia.
+          apply wd_inst_uparams_no_rc.
         (* llargs *)
-        - eassert (wd_llargs : Alli (fun _ => on_free_vars xpredT) 0 llargs). {
+        - eassert (wd_llargs : Alli _ _ llargs). {
             rewrite -Hfst. eapply All_nth. 1:{ cbn_length. rewrite size_inst_uparams. lia. }
-            eapply (All_impl wd_l_inst_uparams_no_rc). intros [] []; done.
+            eapply (All_impl wd_l_inst_uparams_no_rc). intros [] []. tea.
         }
           eapply (Alli_mapi wd_llargs). cbn.
-          intros j x wdx. eapply rc_notin_lift_overflow => //. solve_length.
+          intros j x wdx. eapply rc_notin_lift_overflow; tea. solve_length.
         (* arg *)
-        - assert (wd_t : on_free_vars_argument xpredT (arg_is_free t)). {
+        - eassert (wd_t : on_free_vars_argument _ (arg_is_free t)). {
             rewrite -Hsnd. eapply All_nth.
             1:{ cbn_length. rewrite size_inst_uparams. lia. }
-            eapply (All_impl wd_l_inst_uparams_no_rc). intros [] []; done.
+            eapply (All_impl wd_l_inst_uparams_no_rc). intros [] []; tea.
           }
           rewrite on_free_vars_argument_free1 in wd_t.
-          eapply rc_notin_lift_overflow => //. solve_length.
+          eapply rc_notin_lift_overflow; tea. solve_length.
     Qed.
-
-    Definition wd_argument_specialize_up m arg :
-      on_free_vars_argument xpredT arg ->
-      on_free_vars_argument xpredT (specialize_argument m arg).
-    Proof.
-    Admitted.
 
     Definition rc_notin_argument_specialize_up lb k m arg :
       #|lb| + k <= m ->
@@ -1356,18 +1381,6 @@ Qed.
           eapply pos_arg_notin_unfold => //.
           cbn_length; rewrite Nat.add_0_r. done.
       (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
-      - eapply (Alli_mapi_rec wd_largs).
-        intros i t. eapply on_free_vars_inst.
-        intros j _. erewrite <-shiftnP_xpredT.
-        eapply on_free_vars_up with (Q := xpredT).
-        * intros; apply wd_inst_uparams_no_rc.
-        * by rewrite shiftnP_xpredT.
-      - eapply All_map, (All_impl wd_args).
-        intros t. eapply on_free_vars_inst.
-        intros j _. erewrite <-shiftnP_xpredT.
-        eapply on_free_vars_up with (Q := xpredT).
-        * intros; apply wd_inst_uparams_no_rc.
-        * by rewrite shiftnP_xpredT.
       - eapply (Alli_mapi_rec rc_notin_largs); cbn. intros i t rc_notin_t.
         rewrite map_app cstr_extra_args_lax_false rc_notin_false_left; cbn_length.
         eapply (rc_notin_decrease (check_lax_specialize_argument Γ _)).
@@ -1387,28 +1400,13 @@ Qed.
     + apply pos_arg_is_nested with (mdecl := mdecl); rewrite -> ? length_map in * => //.
       - apply Alli_inst_no_rc_isup_notin => //. solve_length.
       - apply All_inst_no_rc_isup_notin => //. solve_length.
-      - clear wd_instance rc_notin_instance.
+      - clear rc_notin_instance.
         induction Ppos_nested; rewrite -> ? length_map in * ; constructor; only 2: apply IHPpos_nested.
         destruct x as [l_ll l_arg], y as [cdecl pos_arg], r as [[fapp pos_l_ll] pos_l_arg]; cbn in *.
         cbn_length; repeat split => //.
         * apply Alli_inst_no_rc_isup_notin => //. lia.
         * apply_eq p. f_equal. lia.
       (** BEGIN ADDITION NO INDUCTIVE-INDUCTIVE **)
-      - eapply (Alli_mapi_rec wd_largs).
-        intros i t. eapply on_free_vars_inst.
-        intros j _. erewrite <-shiftnP_xpredT.
-        eapply on_free_vars_up with (Q := xpredT).
-        * intros; apply wd_inst_uparams_no_rc.
-        * by rewrite shiftnP_xpredT.
-      - eapply All_map, (All_impl wd_instance).
-        intros [llargs arg] [wd_llargs wd_arg]; cbn in *; cbn_length. split.
-        * eapply (Alli_mapi_rec wd_llargs).
-          intros i t. eapply on_free_vars_inst.
-          intros j _. erewrite <-shiftnP_xpredT.
-          eapply on_free_vars_up with (Q := xpredT).
-          ** intros; apply wd_inst_uparams_no_rc.
-          ** by rewrite shiftnP_xpredT.
-        * eapply wd_argument_specialize_up; tea.
       - eapply (Alli_mapi_rec rc_notin_largs). intros i t rc_notin_t.
         rewrite map_app cstr_extra_args_lax_false rc_notin_false_left; cbn_length.
         eapply (rc_notin_decrease (check_lax_specialize_argument Γ _)).
@@ -1497,7 +1495,7 @@ Qed.
   Proof.
     intros [pos_ctors pos_indices]; split; cbn.
     + eapply All_map, (All_impl pos_ctors pos_specialize_ctor).
-    (* one extra case if you want to prove it is not inductiv inductive *)
+    (* one extra case if you want to prove it is not inductive inductive *)
     + apply pos_new_indices => //.
   Qed.
 
