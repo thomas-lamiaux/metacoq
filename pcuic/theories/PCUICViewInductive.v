@@ -707,7 +707,7 @@ Proof.
   + eapply on_free_vars_lift_eq; mtea; cbn_length; reflexivity || lia.
   + admit.
   + admit.
-  + fold argument_mapi.
+  + clear rc_notin_instance. fold argument_mapi.
     change (argument_mapi (lift (#|Γ2| + n)))
     with (lift_argument (#|Γ2| + n)).
     induction Ppos_nested as [|[llargs arg] [cdecl pos] inst_uparams uparams
@@ -715,6 +715,8 @@ Proof.
     cbn in *; cbn_length; repeat split => //.
     - solve_Alli.
     - apply_eq pos_arg. all: lia.
+  + admit.
+  + admit.
 Admitted.
 
 Definition pos_lift_argument_eq {nb_block up nup Γ1 Γ2 lax nb_binders} arg p Γ q r n k :
