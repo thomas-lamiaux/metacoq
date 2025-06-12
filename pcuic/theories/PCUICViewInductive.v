@@ -164,6 +164,176 @@ Proof.
   done.
 Qed.
 
+Inductive on_free_vars_argument (P : nat -> bool) nb_binders : argument -> Type :=
+| on_free_vars_free t :
+    on_free_vars (shiftnP nb_binders P) t ->
+    on_free_vars_argument P nb_binders (arg_is_free t)
+| on_free_vars_sup largs k inst_args :
+    Alli (fun i => on_free_vars (shiftnP i P)) nb_binders largs ->
+    All (on_free_vars (shiftnP (nb_binders + #|largs|) P)) inst_args ->
+    on_free_vars_argument P nb_binders (arg_is_sp_uparam largs k inst_args)
+| on_free_vars_ind largs pos_indb inst_nuparams_indices :
+    Alli (fun i => on_free_vars (shiftnP i P)) nb_binders largs ->
+    All (on_free_vars (shiftnP (nb_binders + #|largs|) P)) inst_nuparams_indices ->
+    on_free_vars_argument P nb_binders (arg_is_ind largs pos_indb inst_nuparams_indices)
+| on_free_vars_nested largs ind u inst_uparams inst_nuparams_indices :
+    Alli (fun i => on_free_vars (shiftnP i P)) nb_binders largs ->
+    All (fun x =>
+          Alli (fun i => on_free_vars (shiftnP i P)) (nb_binders + #|largs|) x.1
+        * on_free_vars_argument P (nb_binders + #|largs| + #|x.1|) x.2)
+      inst_uparams ->
+    All (on_free_vars (shiftnP (nb_binders + #|largs|) P)) inst_nuparams_indices ->
+    on_free_vars_argument P nb_binders (arg_is_nested largs ind u inst_uparams inst_nuparams_indices).
+
+Inductive All_param1 {A P} (HP : forall a, P a -> Type) : forall {lA}, All P lA -> Type :=
+| All_nil_param1 : All_param1 HP ( @All_nil A P)
+| All_cons_param1 : forall (x : A) (l : list A),
+              forall (px : P x), HP _ px ->
+              forall (al : All P l), All_param1 HP al ->
+              All_param1 HP (All_cons px al).
+
+Definition on_free_vars_argument_rect'
+  P
+  (PP : forall {nb_binders arg}, on_free_vars_argument P nb_binders arg -> Type)
+  (PP_on_free_vars_free :
+      forall nb_binders t i,
+      (* ------------------------ *)
+      PP (on_free_vars_free P nb_binders t i)
+    )
+  (PP_on_free_vars_sup :
+      forall nb_binders (largs : list term) (k : nat) (inst_args : list term)
+      on_free_largs on_free_inst_args,
+      (* ------------------------ *)
+      PP (on_free_vars_sup P nb_binders largs k inst_args on_free_largs on_free_inst_args)
+    )
+  (PP_on_free_vars_ind :
+      forall nb_binders (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
+      on_free_largs on_free_inst_args,
+      (* ------------------------ *)
+      PP (on_free_vars_ind P nb_binders largs pos_indb inst_nuparams_indices
+            on_free_largs on_free_inst_args)
+    )
+  (PP_on_free_vars_nested:
+      forall nb_binders (largs : list term) ind u inst_uparams inst_nuparams_indices
+      on_free_largs
+      (on_free_inst_uparams:
+          All (fun x =>
+            Alli (fun i => on_free_vars (shiftnP i P)) (nb_binders + #|largs|) x.1
+          * on_free_vars_argument P (nb_binders + #|largs| + #|x.1|) x.2)
+        inst_uparams)
+      on_free_inst_nuparams_indices
+      (IHuparams : All_param1 (fun x px => PP px.2) on_free_inst_uparams)
+      ,
+      (* ------------------------ *)
+      PP (on_free_vars_nested P nb_binders largs ind u inst_uparams inst_nuparams_indices
+          on_free_largs on_free_inst_uparams on_free_inst_nuparams_indices)
+    )
+  : forall nb_binders arg (p : on_free_vars_argument P nb_binders arg), PP p.
+Proof.
+  fix rec 3.
+  intros nb_binders arg p.
+  destruct p as [ | | | ? ? ? ? ? on_free_llargs on_free_inst_uparams on_free_inst_nuparams_indices ].
+  - apply PP_on_free_vars_free.
+  - apply PP_on_free_vars_sup.
+  - apply PP_on_free_vars_ind.
+  - apply PP_on_free_vars_nested => //.
+    induction on_free_inst_uparams; constructor; cbn.
+    destruct x; cbn.
+    apply rec. apply IHon_free_inst_uparams.
+Defined.
+
+(* Inductive on_free_vars_argument (P : nat -> bool) : argument -> Type :=
+| on_free_vars_free t :
+    on_free_vars P t ->
+    on_free_vars_argument P (arg_is_free t)
+| on_free_vars_sup largs k inst_args :
+    Alli (fun i => on_free_vars (shiftnP i P)) 0 largs ->
+    All (on_free_vars (shiftnP #|largs| P)) inst_args ->
+    on_free_vars_argument P (arg_is_sp_uparam largs k inst_args)
+| on_free_vars_ind largs pos_indb inst_nuparams_indices :
+    Alli (fun i => on_free_vars (shiftnP i P)) 0 largs ->
+    All (on_free_vars (shiftnP #|largs| P)) inst_nuparams_indices ->
+    on_free_vars_argument P (arg_is_sp_uparam largs pos_indb inst_nuparams_indices)
+| on_free_vars_nested largs ind u inst_uparams inst_nuparams_indices :
+    Alli (fun i => on_free_vars (shiftnP i P)) 0 largs ->
+    All (fun x =>
+          Alli (fun i => on_free_vars (shiftnP i P)) #|largs| x.1
+        * on_free_vars_argument (shiftnP (#|largs| + #|x.1|) P)  x.2)
+      inst_uparams ->
+    All (on_free_vars (shiftnP (#|largs|) P)) inst_nuparams_indices ->
+    on_free_vars_argument P (arg_is_nested largs ind u inst_uparams inst_nuparams_indices).
+
+Inductive All_param1 {A P} (HP : forall a, P a -> Type) : forall {lA}, All P lA -> Type :=
+| All_nil_param1 : All_param1 HP ( @All_nil A P)
+| All_cons_param1 : forall (x : A) (l : list A),
+              forall (px : P x), HP _ px ->
+              forall (al : All P l), All_param1 HP al ->
+              All_param1 HP (All_cons px al).
+
+Definition on_free_vars_argument_rect'
+  (PP : forall {P arg}, on_free_vars_argument P arg -> Type)
+  (PP_on_free_vars_free :
+      forall P t i,
+      (* ------------------------ *)
+      PP (on_free_vars_free P t i)
+    )
+  (PP_on_free_vars_sup :
+      forall P (largs : list term) (k : nat) (inst_args : list term)
+      on_free_largs on_free_inst_args,
+      (* ------------------------ *)
+      PP (on_free_vars_sup P largs k inst_args on_free_largs on_free_inst_args)
+    )
+  (PP_on_free_vars_ind :
+      forall P (largs : list term) (pos_indb : nat) (inst_nuparams_indices : list term)
+      on_free_largs on_free_inst_args,
+      (* ------------------------ *)
+      PP (on_free_vars_ind P largs pos_indb inst_nuparams_indices
+            on_free_largs on_free_inst_args)
+    )
+  (PP_on_free_vars_nested:
+      forall P (largs : list term) ind u inst_uparams inst_nuparams_indices
+      on_free_inst_largs
+      (on_free_inst_uparams:
+          All (fun x =>
+            Alli (fun i => on_free_vars (shiftnP i P)) #|largs| x.1
+          * on_free_vars_argument (shiftnP (#|largs| + #|x.1|) P) x.2)
+        inst_uparams)
+      on_free_inst_uparams on_free_inst_nuparams_indices
+      (IHuparams : All_param1 (fun x px => PP px.2) on_free_inst_uparams)
+      ,
+      (* ------------------------ *)
+      PP (on_free_vars_nested P largs ind u inst_uparams inst_nuparams_indices
+          on_free_inst_largs on_free_inst_uparams on_free_inst_nuparams_indices)
+    )
+  : forall P arg (p : on_free_vars_argument P arg), PP p.
+Proof.
+  fix rec 3.
+  intros P arg p.
+  destruct p as [ | | | ? ? ? ? ? on_free_llargs on_free_inst_uparams on_free_inst_nuparams_indices ].
+  - apply PP_on_free_vars_free.
+  - apply PP_on_free_vars_sup.
+  - apply PP_on_free_vars_ind.
+  - apply PP_on_free_vars_nested => //.
+    induction on_free_inst_uparams; constructor; cbn.
+    destruct x; cbn.
+    apply rec. apply IHon_free_inst_uparams.
+Defined. *)
+
+
+Definition on_free_vars_argument_free Q k t :
+  on_free_vars_argument Q k (arg_is_free t) -> on_free_vars (shiftnP k Q) t.
+Proof.
+  intros X. inversion X. tea.
+Qed.
+
+Definition on_free_vars_argument_shiftnP_add P n m arg :
+  on_free_vars_argument P (n + m) arg -> on_free_vars_argument (shiftnP n P) m arg.
+Admitted.
+
+Definition on_free_vars_argument_shiftnP_add_n P n m arg :
+  on_free_vars_argument (shiftnP n P) m arg -> on_free_vars_argument P (n + m) arg.
+Admitted.
+
 Fixpoint argument_mapi (f : nat -> term -> term) above arg : argument :=
   match arg with
   | arg_is_free t => arg_is_free (f above t)
@@ -195,9 +365,9 @@ Definition lift_argument n := argument_mapi (lift n).
 Definition subst_argument l := argument_mapi (subst l).
 Definition rename_argument f := argument_mapi (fun n => rename (shiftn n f)).
 
-Axiom (on_free_vars_argument : (nat -> bool) -> argument -> bool).
+(* Axiom (on_free_vars_argument : (nat -> bool) -> argument -> bool).
 Axiom (on_free_vars_argument_free1 : forall P t, on_free_vars_argument P (arg_is_free t) = on_free_vars P t).
-
+ *)
 
 
 
@@ -307,19 +477,11 @@ Section PositiveIndBlock.
     := rc_notin_bool (map check_lax Γ).
 
   (* for arguments *)
-  Definition rc_notin_argument_bool (lb : list bool) : nat -> argument -> bool :=
-    fun k arg => on_free_vars_argument (shiftnP k (rc_notinP lb)) arg.
-
-  Definition rc_notin_argument_bool_free lb n t :
-    rc_notin_argument_bool lb n (arg_is_free t) = rc_notin_bool lb n t :=
-  todo.
+  Definition rc_notin_argument_bool (lb : list bool) : nat -> argument -> Type :=
+    fun k arg => on_free_vars_argument (rc_notinP lb) k arg.
 
   Definition rc_notin_argument Γ :=
     rc_notin_argument_bool (map check_lax Γ).
-
-  Definition rc_notin_argument_free Γ n t :
-    rc_notin_argument Γ n (arg_is_free t) = rc_notin Γ n t :=
-  todo.
 
 
   Reserved Notation " lax |> size_cxt |arg+> t " (at level 50, t at next level).
@@ -747,50 +909,6 @@ Definition pos_subst_argument_eq {nb_block up nup Γ lax nb_binders} sub above a
 Proof.
   intros -> -> ->; apply pos_subst_argument.
 Qed.
-
-(* Fixpoint argument_measure arg : nat :=
-  match arg with
-  | arg_is_free t => 0
-  | arg_is_sp_uparam largs k inst_args => 0
-  | arg_is_ind largs pos_indb inst_nuparams_indices => 0
-  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-      1 + fold_right max 0 (map (fun x => argument_measure x.2) inst_uparams)
-  end. *)
-
-(* From Equations Require Import Equations.
-
-Equations? argument_predi (P : nat -> term -> Type) above arg : Type by wf (argument_measure arg) lt :=
-argument_predi P above (arg_is_free t) := P above t;
-argument_predi P above (arg_is_sp_uparam largs k inst_args) :=
-        Alli P above largs * All (P (above + #|largs|)) inst_args;
-argument_predi P above (arg_is_ind largs pos_indb inst_nuparams_indices) :=
-        Alli P above largs * All (P (above + #|largs|)) inst_nuparams_indices;
-argument_predi P above (arg_is_nested largs ind u inst_uparams inst_nuparams_indices) :=
-        Alli P above largs
-      * All (fun x => Alli P (above + #|largs|) x.1
-        * argument_predi P (above + #|largs| + #|x.1|) x.2) inst_uparams
-      * All (P (above + #|largs|)) inst_nuparams_indices.
-Proof.
-Admitted. *)
-
-(* Fixpoint argument_predi (P : nat -> term -> Type) above arg {struct arg} : Type :=
-  match arg with
-  | arg_is_free t => P above t
-  | arg_is_sp_uparam largs k inst_args =>
-        Alli P above largs
-      * All (P (above + #|largs|)) inst_args
-  | arg_is_ind largs pos_indb inst_nuparams_indices =>
-        Alli P above largs
-      * All (P (above + #|largs|)) inst_nuparams_indices
-  | arg_is_nested largs ind u inst_uparams inst_nuparams_indices =>
-        Alli P above largs
-      * All (fun x =>
-          Alli P (above + #|largs|) x.1
-        * argument_predi P (above + #|largs| + #|x.1|) x.2)
-          inst_uparams
-      * All (P (above + #|largs|)) inst_nuparams_indices
-  end. *)
-
 
 
 (* *** View to Env *** *)
