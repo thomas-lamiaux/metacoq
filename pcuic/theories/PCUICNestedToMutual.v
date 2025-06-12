@@ -910,21 +910,6 @@ Section NestedToMutualInd.
       )
     inst_uparams_a.
 
-  Definition rc_notin_l_inst_uparams_no_rc :
-    All (fun p =>
-        Alli (rc_notin g_args_no_rc) nb_g_largs p.1
-      * rc_notin_argument g_args_no_rc (nb_g_largs + #|p.1|) p.2
-      ) l_inst_uparams_no_rc.
-  Proof.
-    unfold l_inst_uparams_no_rc. eapply All_map.
-    eapply (All_impl rc_notin_inst_llargs_args).
-    intros [llargs arg] [rc_notin_llargs rc_notin_arg]; cbn in *. split => //.
-    + eapply (Alli_mapi rc_notin_llargs). intros.
-      unfold rc_notin, rc_notin_bool.
-      admit.
-    + admit.
-  Admitted.
-
   Definition wd_l_inst_uparams_no_rc :
     All (fun p =>
         Alli (fun=> (fun t0 => on_free_vars xpredT t0)) 0 p.1
@@ -1068,13 +1053,28 @@ Section NestedToMutualInd.
     destruct (Nat.ltb_spec i #|(map inst_to_term_no_rc l_inst_uparams_no_rc)|).
     2: { rewrite nth_overflow; tea. done. }
     apply All_nth; tea.
-    eapply All_map, (All_impl wd_l_inst_uparams_no_rc).
-    intros [llargs arg] [wd_llargs wd_arg]; cbn in *.
+    eapply All_map, (All_impl2 positive_true_all_no_rc wd_l_inst_uparams_no_rc).
+    intros [llargs arg] pos_arg [wd_llargs wd_arg]; cbn in *.
     rewrite -(shiftnP_xpredT 0).
     eapply on_free_vars_tLambda.
-    - eapply (Alli_impl wd_llargs). intros; rewrite shiftnP_xpredT; done.
-    - admit.
-  Admitted.
+    + eapply (Alli_impl wd_llargs). intros; rewrite shiftnP_xpredT; done.
+    + clear -wd_arg.
+      eapply (on_free_vars_argument_xpredT xpredT xpredT _ #|llargs|) in wd_arg.
+      induction wd_arg using on_free_vars_argument_rect'; cbn => //.
+      - apply on_free_vars_tProd, on_free_vars_mkApps => //; cbn.
+        rewrite shiftnP_xpredT => //.
+      - apply on_free_vars_tProd, on_free_vars_mkApps => //; cbn.
+        * unfold tRels. apply All_app_inv => //.
+          apply All_rev_pointwise_map => //.
+          intros. rewrite shiftnP_xpredT => //.
+        * rewrite shiftnP_xpredT => //.
+      - apply on_free_vars_tProd, on_free_vars_mkApps => //.
+        apply All_app_inv => //.
+        induction IHuparams ; constructor. 2:apply IHIHuparams => //.
+        destruct x as [llargs0 arg0], px as [ofr_llargs0 ofr_arg0].
+        eapply on_free_vars_tLambda => //.
+        cbn in h. apply_eq h. f_equal. f_equal. lia.
+  Qed.
 
 
 
